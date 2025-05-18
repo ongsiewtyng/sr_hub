@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sr_hub/core/theme/app_theme.dart';
-import 'package:sr_hub/features/resource_management/presentation/widgets/filter_chip.dart';
 import 'package:sr_hub/features/resource_management/presentation/widgets/resource_card.dart';
 
 class ResourceSearchScreen extends StatefulWidget {
@@ -77,7 +76,15 @@ class _ResourceSearchScreenState extends State<ResourceSearchScreen> {
                 spacing: 8,
                 children: _selectedFilters.map((filter) {
                   return FilterChip(
-                    label: filter,
+                    label: Text(filter),
+                    selected: false,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (!selected) {
+                          _selectedFilters.remove(filter);
+                        }
+                      });
+                    },
                     onDeleted: () {
                       setState(() {
                         _selectedFilters.remove(filter);
