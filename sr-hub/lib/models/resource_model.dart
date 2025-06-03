@@ -37,4 +37,48 @@ class Resource {
     this.downloadCount = 0,
     this.isPublic = true,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'type': type,
+      'url': url,
+      'subject': subject,
+      'author': author,
+      'dateAdded': dateAdded.toIso8601String(),
+      'format': format,
+      'size': size,
+      'language': language,
+      'license': license,
+      'previewImageUrl': previewImageUrl,
+      'tags': tags,
+      'viewCount': viewCount,
+      'downloadCount': downloadCount,
+      'isPublic': isPublic,
+    };
+  }
+
+  factory Resource.fromMap(Map<String, dynamic> map) {
+    return Resource(
+      id: map['id'] ?? '',
+      title: map['title'] ?? '',
+      description: map['description'] ?? '',
+      type: map['type'] ?? '',
+      url: map['url'] ?? '',
+      subject: map['subject'] ?? '',
+      author: map['author'] ?? '',
+      dateAdded: DateTime.parse(map['dateAdded']),
+      format: map['format'] ?? '',
+      size: map['size'] ?? '',
+      language: map['language'] ?? 'English',
+      license: map['license'] ?? '',
+      previewImageUrl: map['previewImageUrl'],
+      tags: List<String>.from(map['tags'] ?? []),
+      viewCount: map['viewCount'] ?? 0,
+      downloadCount: map['downloadCount'] ?? 0,
+      isPublic: map['isPublic'] ?? true,
+    );
+  }
 }

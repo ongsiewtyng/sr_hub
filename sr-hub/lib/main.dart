@@ -1,15 +1,21 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sr_hub/screens/resources/resources_search_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/library/library_map_screen.dart';
 import 'screens/bookstore/bookstore_homepage_screen.dart';
-import 'screens/resources/resources_search_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/auth/login_screen.dart';
 import 'theme/app_theme.dart';
+import 'services/auth_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   runApp(
     const ProviderScope(
       child: StudyResourceHubApp(),
@@ -19,10 +25,18 @@ void main() {
 
 final _router = GoRouter(
   initialLocation: '/',
+  redirect: (context, state) {
+    // Add authentication check here
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/',
       builder: (context, state) => const HomeScreen(),
+    ),
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginScreen(),
     ),
     GoRoute(
       path: '/library',

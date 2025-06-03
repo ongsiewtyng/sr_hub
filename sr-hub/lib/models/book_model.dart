@@ -39,4 +39,50 @@ class Book {
     this.isNew = false,
     this.isFeatured = false,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'author': author,
+      'coverUrl': coverUrl,
+      'description': description,
+      'price': price,
+      'categories': categories,
+      'publisher': publisher,
+      'publishDate': publishDate.toIso8601String(),
+      'isbn': isbn,
+      'pageCount': pageCount,
+      'formats': formats,
+      'formatPrices': formatPrices,
+      'rating': rating,
+      'reviewCount': reviewCount,
+      'isAvailable': isAvailable,
+      'isNew': isNew,
+      'isFeatured': isFeatured,
+    };
+  }
+
+  factory Book.fromMap(Map<String, dynamic> map) {
+    return Book(
+      id: map['id'] ?? '',
+      title: map['title'] ?? '',
+      author: map['author'] ?? '',
+      coverUrl: map['coverUrl'] ?? '',
+      description: map['description'],
+      price: (map['price'] ?? 0).toDouble(),
+      categories: List<String>.from(map['categories'] ?? []),
+      publisher: map['publisher'] ?? '',
+      publishDate: DateTime.parse(map['publishDate']),
+      isbn: map['isbn'] ?? '',
+      pageCount: map['pageCount'] ?? 0,
+      formats: List<String>.from(map['formats'] ?? []),
+      formatPrices: Map<String, double>.from(map['formatPrices'] ?? {}),
+      rating: (map['rating'] ?? 0).toDouble(),
+      reviewCount: map['reviewCount'] ?? 0,
+      isAvailable: map['isAvailable'] ?? true,
+      isNew: map['isNew'] ?? false,
+      isFeatured: map['isFeatured'] ?? false,
+    );
+  }
 }

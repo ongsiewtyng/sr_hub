@@ -1,4 +1,6 @@
 // lib/data/sample_data.dart
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/book_model.dart';
 import '../models/resource_model.dart';
 import '../models/reservation_model.dart';
@@ -486,8 +488,8 @@ class SampleData {
   }
 
   // Sample User
-  static User getUser() {
-    return User(
+  static AppUser getUser() {
+    return AppUser(
       id: 'user_1',
       name: 'John Doe',
       email: 'john.doe@example.com',

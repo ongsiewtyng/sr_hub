@@ -70,4 +70,38 @@ class Seat {
   }
 
   bool get isAvailable => status == SeatStatus.available;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'floorId': floorId,
+      'floorName': floorName,
+      'type': type.toString().split('.').last,
+      'status': status.toString().split('.').last,
+      'amenities': amenities,
+      'capacity': capacity,
+      'position': position,
+    };
+  }
+
+  factory Seat.fromMap(Map<String, dynamic> map) {
+    return Seat(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      floorId: map['floorId'] ?? '',
+      floorName: map['floorName'] ?? '',
+      type: SeatType.values.firstWhere(
+            (e) => e.toString().split('.').last == map['type'],
+        orElse: () => SeatType.individual,
+      ),
+      status: SeatStatus.values.firstWhere(
+            (e) => e.toString().split('.').last == map['status'],
+        orElse: () => SeatStatus.available,
+      ),
+      amenities: List<String>.from(map['amenities'] ?? []),
+      capacity: map['capacity'] ?? 1,
+      position: Map<String, double>.from(map['position'] ?? {}),
+    );
+  }
 }

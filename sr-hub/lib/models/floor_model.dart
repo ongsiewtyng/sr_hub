@@ -15,6 +15,28 @@ class FloorZone {
     required this.description,
     required this.color,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'type': type,
+      'bounds': bounds,
+      'description': description,
+      'color': color,
+    };
+  }
+
+  factory FloorZone.fromMap(Map<String, dynamic> map) {
+    return FloorZone(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      type: map['type'] ?? '',
+      bounds: Map<String, double>.from(map['bounds'] ?? {}),
+      description: map['description'] ?? '',
+      color: map['color'] ?? '#E3F2FD',
+    );
+  }
 }
 
 class Floor {
@@ -37,4 +59,32 @@ class Floor {
     required this.zones,
     this.isAccessible = true,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'level': level,
+      'mapImageUrl': mapImageUrl,
+      'features': features,
+      'dimensions': dimensions,
+      'zones': zones.map((zone) => zone.toMap()).toList(),
+      'isAccessible': isAccessible,
+    };
+  }
+
+  factory Floor.fromMap(Map<String, dynamic> map) {
+    return Floor(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      level: map['level'] ?? 1,
+      mapImageUrl: map['mapImageUrl'] ?? '',
+      features: List<String>.from(map['features'] ?? []),
+      dimensions: Map<String, double>.from(map['dimensions'] ?? {}),
+      zones: (map['zones'] as List<dynamic>?)
+          ?.map((zone) => FloorZone.fromMap(zone as Map<String, dynamic>))
+          .toList() ?? [],
+      isAccessible: map['isAccessible'] ?? true,
+    );
+  }
 }
