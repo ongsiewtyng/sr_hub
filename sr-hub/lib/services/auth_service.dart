@@ -1,4 +1,4 @@
-// lib/services/auth_service.dart
+// lib/services/auth_service.dart (Update the registration method)
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
@@ -39,10 +39,14 @@ class AuthService {
       String department,
       ) async {
     try {
+      // Create user account
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Update display name
+      await result.user?.updateDisplayName(name);
 
       // Create user document in Firestore
       if (result.user != null) {
@@ -68,20 +72,37 @@ class AuthService {
       String studentId,
       String department,
       ) async {
-    final userDoc = _firestore.collection('users').doc(user.uid);
+    try {
+      final userDoc = _firestore.collection('users').doc(user.uid);
 
-    final userData = AppUser(
-      id: user.uid,
-      name: name,
-      email: user.email!,
-      studentId: studentId,
-      department: department,
-      role: 'student',
-      memberSince: DateTime.now(),
-      isVerified: false,
-    );
+      final userData = AppUser(
+        id: user.uid,
+        name: name,
+        email: user.email!,
+        studentId: studentId,
+        department: department,
+        role: 'student',
+        memberSince: DateTime.now(),
+        isVerified: false,
+      );
 
-    await userDoc.set(userData.toMap());
+      await userDoc.set(userData.toMap());
+
+      // Also create initial user stats
+      await _firestore.collection('user_stats').doc(user.uid).set({
+        'userId': user.uid,
+        'totalReservations': 0,
+        'totalBooksRead': 0,
+        'totalResourcesAccessed': 0,
+        'joinDate': DateTime.now().toIso8601String(),
+        'lastActive': DateTime.now().toIso8601String(),
+      });
+
+      print('User document created successfully for ${user.uid}');
+    } catch (e) {
+      print('Error creating user document: $e');
+      rethrow;
+    }
   }
 
   // Get user data from Firestore
@@ -95,6 +116,16 @@ class AuthService {
     } catch (e) {
       print('Get user data error: $e');
       return null;
+    }
+  }
+
+  // Update user profile
+  Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
+    try {
+      await _firestore.collection('users').doc(uid).update(data);
+    } catch (e) {
+      print('Update user profile error: $e');
+      rethrow;
     }
   }
 
@@ -114,6 +145,24 @@ class AuthService {
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e) {
       print('Reset password error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete user account
+  Future<void> deleteAccount() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Delete user document from Firestore
+        await _firestore.collection('users').doc(user.uid).delete();
+        await _firestore.collection('user_stats').doc(user.uid).delete();
+
+        // Delete user account
+        await user.delete();
+      }
+    } catch (e) {
+      print('Delete account error: $e');
       rethrow;
     }
   }

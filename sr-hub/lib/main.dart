@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sr_hub/screens/auth/register_screen.dart';
 import 'package:sr_hub/screens/resources/resources_search_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/library/library_map_screen.dart';
@@ -37,6 +38,10 @@ final _router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/register',
+      builder: (context, state) => const RegisterScreen(),
     ),
     GoRoute(
       path: '/library',
