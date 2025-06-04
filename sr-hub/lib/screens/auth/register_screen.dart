@@ -83,7 +83,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(authServiceProvider).registerWithEmailAndPassword(
+      print('Starting registration...');
+
+      final user = await ref.read(authServiceProvider).registerWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text,
         _nameController.text.trim(),
@@ -91,7 +93,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         _selectedDepartment ?? 'Other',
       );
 
-      if (mounted) {
+      print('Registration completed for user: ${user?.uid}');
+
+      if (mounted && user != null) {
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -105,20 +109,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         context.go('/');
       }
     } catch (e) {
+      print('Registration failed with error: $e');
+
       if (mounted) {
         String errorMessage = 'Registration failed';
 
         // Handle specific Firebase Auth errors
-        if (e.toString().contains('email-already-in-use')) {
+        String errorString = e.toString().toLowerCase();
+
+        if (errorString.contains('email-already-in-use')) {
           errorMessage = 'An account with this email already exists';
-        } else if (e.toString().contains('weak-password')) {
+        } else if (errorString.contains('weak-password')) {
           errorMessage = 'Password is too weak. Please choose a stronger password';
-        } else if (e.toString().contains('invalid-email')) {
+        } else if (errorString.contains('invalid-email')) {
           errorMessage = 'Please enter a valid email address';
-        } else if (e.toString().contains('network-request-failed')) {
+        } else if (errorString.contains('network-request-failed')) {
           errorMessage = 'Network error. Please check your internet connection';
+        } else if (errorString.contains('operation-not-allowed')) {
+          errorMessage = 'Email/password accounts are not enabled. Please contact support';
         } else {
-          errorMessage = 'Registration failed: ${e.toString()}';
+          errorMessage = 'Registration failed. Please try again';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -135,6 +145,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

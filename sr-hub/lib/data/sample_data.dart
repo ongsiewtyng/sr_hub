@@ -493,7 +493,7 @@ class SampleData {
       id: 'user_1',
       name: 'John Doe',
       email: 'john.doe@example.com',
-      profilePictureUrl: 'https://randomuser.me/api/portraits/men/1.jpg',
+      profileImageUrl: 'https://randomuser.me/api/portraits/men/1.jpg',
       studentId: 'S12345',
       department: 'Computer Science',
       role: 'student',
