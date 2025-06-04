@@ -1,317 +1,350 @@
 // lib/screens/profile/profile_screen.dart
 import 'package:flutter/material.dart';
-import '../../widgets/custom_app_bar.dart';
-import '../../data/sample_data.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../widgets/loading_indicator.dart';
+import '../../widgets/error_display.dart';
 
-
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
   @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load user profile when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(userProfileProvider.notifier).loadUserProfile();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final user = SampleData.getUser();
-    final reservations = SampleData.getReservations();
+    final userProfileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Profile',
+      appBar: AppBar(
+        title: const Text('Profile'),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: null,
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              context.push('/profile/edit');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _showLogoutDialog(context),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Profile header
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-              ),
+      body: userProfileAsync.when(
+        loading: () => const Center(child: LoadingIndicator()),
+        error: (error, stackTrace) => ErrorDisplay(
+          message: 'Failed to load profile',
+          onRetry: () => ref.read(userProfileProvider.notifier).loadUserProfile(),
+        ),
+        data: (user) {
+          if (user == null) {
+            return const Center(
+              child: Text('No user data found'),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => ref.read(userProfileProvider.notifier).loadUserProfile(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Profile picture
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: NetworkImage(user.profileImageUrl!),
-                  ),
+                  // Profile Header
+                  _buildProfileHeader(user),
+                  const SizedBox(height: 24),
+
+                  // Profile Information Cards
+                  _buildInfoCard('Personal Information', [
+                    _buildInfoRow('Full Name', user.name),
+                    _buildInfoRow('Email', user.email),
+                    _buildInfoRow('Phone', user.phoneNumber ?? 'Not provided'),
+                    _buildInfoRow('Date of Birth', user.dateOfBirth?.toString().split(' ')[0] ?? 'Not provided'),
+                  ]),
+
                   const SizedBox(height: 16),
-                  // Name
-                  Text(
-                    user.name,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Email
-                  Text(
-                    user.email,
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
+
+                  _buildInfoCard('Academic Information', [
+                    _buildInfoRow('Student ID', user.studentId),
+                    _buildInfoRow('Department', user.department),
+                    _buildInfoRow('Role', user.role.toUpperCase()),
+                    _buildInfoRow('Member Since', user.memberSince?.toString().split(' ')[0] ?? 'Unknown'),
+                  ]),
+
                   const SizedBox(height: 16),
-                  // Edit profile button
-                  OutlinedButton(
-                    onPressed: () {},
-                    child: const Text('Edit Profile'),
-                  ),
+
+                  _buildInfoCard('Account Status', [
+                    _buildInfoRow('Verification Status', user.isVerified ? 'Verified' : 'Not Verified'),
+                    _buildInfoRow('Account Created', user.createdAt?.toString().split(' ')[0] ?? 'Unknown'),
+                    _buildInfoRow('Last Updated', user.updatedAt?.toString().split(' ')[0] ?? 'Unknown'),
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  // Action Buttons
+                  _buildActionButtons(context),
+
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
-
-            // Stats section
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  _buildStatCard(
-                    context,
-                    Icons.event_seat,
-                    reservations.length.toString(),
-                    'Reservations',
-                  ),
-                  _buildStatCard(
-                    context,
-                    Icons.book,
-                    '5',
-                    'Books',
-                  ),
-                  _buildStatCard(
-                    context,
-                    Icons.file_copy,
-                    '23',
-                    'Resources',
-                  ),
-                ],
-              ),
-            ),
-
-            // Activity section
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Text(
-                    'Recent Activity',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 4,
-              itemBuilder: (context, index) {
-                final types = ['reservation', 'book', 'resource', 'reservation'];
-                final titles = [
-                  'Reserved Seat 101',
-                  'Checked out "Flutter in Action"',
-                  'Accessed "Flutter State Management Tutorial"',
-                  'Reserved Study Room 3',
-                ];
-                final timestamps = ['2 hours ago', '1 day ago', '3 days ago', '1 week ago'];
-
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: _getActivityColor(types[index]),
-                    child: Icon(
-                      _getActivityIcon(types[index]),
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                  title: Text(titles[index]),
-                  subtitle: Text(timestamps[index]),
-                  onTap: () {},
-                );
-              },
-            ),
-
-            // Saved items section
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Saved Items',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  Text(
-                    'See All',
-                    style: TextStyle(
-                      color: Colors.blue,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: 160,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 4,
-                itemBuilder: (context, index) {
-                  final titles = [
-                    'Flutter in Action',
-                    'Flutter State Management Tutorial',
-                    'Seat 101',
-                    'Mobile App Design Principles',
-                  ];
-                  final types = ['Book', 'Resource', 'Seat', 'Resource'];
-
-                  return Container(
-                    width: 140,
-                    margin: EdgeInsets.only(
-                      left: index == 0 ? 16 : 8,
-                      right: index == 3 ? 16 : 8,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Item thumbnail
-                        Container(
-                          height: 100,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: _getSavedItemColor(types[index]),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              _getSavedItemIcon(types[index]),
-                              color: Colors.white,
-                              size: 32,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Item title
-                        Text(
-                          titles[index],
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                        // Item type
-                        Text(
-                          types[index],
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 24),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStatCard(BuildContext context, IconData icon, String value, String label) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: Theme.of(context).primaryColor,
-                size: 28,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+  Widget _buildProfileHeader(user) {
+    return Column(
+      children: [
+        // Profile Image
+        Stack(
+          children: [
+            CircleAvatar(
+              radius: 60,
+              backgroundColor: Colors.grey.shade300,
+              backgroundImage: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
+                  ? NetworkImage(user.profileImageUrl!)
+                  : null,
+              child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
+                  ? Icon(
+                Icons.person,
+                size: 60,
+                color: Colors.grey.shade600,
+              )
+                  : null,
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                  onPressed: () {
+                    // TODO: Implement image picker
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Image upload coming soon!')),
+                    );
+                  },
                 ),
               ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Name and Email
+        Text(
+          user.name,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          user.email,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Verification Badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: user.isVerified ? Colors.green.shade100 : Colors.orange.shade100,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                user.isVerified ? Icons.verified : Icons.pending,
+                size: 16,
+                color: user.isVerified ? Colors.green.shade700 : Colors.orange.shade700,
+              ),
+              const SizedBox(width: 4),
               Text(
-                label,
+                user.isVerified ? 'Verified' : 'Pending Verification',
                 style: TextStyle(
-                  color: Colors.grey.shade700,
+                  color: user.isVerified ? Colors.green.shade700 : Colors.orange.shade700,
+                  fontWeight: FontWeight.w500,
                   fontSize: 12,
                 ),
               ),
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildInfoCard(String title, List<Widget> children) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
       ),
     );
   }
 
-  Color _getActivityColor(String type) {
-    switch (type) {
-      case 'reservation':
-        return Colors.blue;
-      case 'book':
-        return Colors.green;
-      case 'resource':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w400),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  IconData _getActivityIcon(String type) {
-    switch (type) {
-      case 'reservation':
-        return Icons.event_seat;
-      case 'book':
-        return Icons.book;
-      case 'resource':
-        return Icons.file_copy;
-      default:
-        return Icons.history;
-    }
+  Widget _buildActionButtons(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              context.push('/profile/edit');
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('Edit Profile'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              // TODO: Implement change password
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Change password coming soon!')),
+              );
+            },
+            icon: const Icon(Icons.lock),
+            label: const Text('Change Password'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _showDeleteAccountDialog(context),
+            icon: const Icon(Icons.delete_forever, color: Colors.red),
+            label: const Text('Delete Account', style: TextStyle(color: Colors.red)),
+          ),
+        ),
+      ],
+    );
   }
 
-  Color _getSavedItemColor(String type) {
-    switch (type) {
-      case 'Book':
-        return Colors.green;
-      case 'Resource':
-        return Colors.purple;
-      case 'Seat':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await ref.read(authServiceProvider).signOut();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
   }
 
-  IconData _getSavedItemIcon(String type) {
-    switch (type) {
-      case 'Book':
-        return Icons.book;
-      case 'Resource':
-        return Icons.file_copy;
-      case 'Seat':
-        return Icons.event_seat;
-      default:
-        return Icons.bookmark;
-    }
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'Are you sure you want to delete your account? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+                await ref.read(authServiceProvider).deleteAccount();
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete account: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 }
