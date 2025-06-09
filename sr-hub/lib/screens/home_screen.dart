@@ -204,9 +204,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // Widget showcase (for demonstration)
-              _buildWidgetShowcase(),
-
               const SizedBox(height: 24),
             ],
           ),
@@ -729,106 +726,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
             ))
                 .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWidgetShowcase() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Widget Showcase',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Rating Widget',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const RatingWidget(
-                rating: 4.5,
-                showLabel: true,
-                reviewCount: 120,
-              ),
-              const SizedBox(width: 16),
-              RatingWidget(
-                rating: 3.0,
-                size: 20,
-                activeColor: Colors.amber.shade800,
-                showLabel: true,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Loading Indicator',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const SizedBox(
-            height: 100,
-            child: LoadingIndicator(
-              message: 'Loading data...',
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Error Display',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 150,
-            child: ErrorDisplay(
-              message: 'Failed to load data. Please try again.',
-              onRetry: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Retrying...')),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Empty State',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 150,
-            child: EmptyState(
-              message: 'No items found',
-              icon: Icons.inbox,
-              actionText: 'Add Item',
-              onAction: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Add item action triggered')),
-                );
-              },
-            ),
           ),
         ],
       ),
