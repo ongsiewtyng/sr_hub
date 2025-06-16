@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/open_library_models.dart';
 import '../../providers/open_library_provider.dart';
 import '../../widgets/loading_indicator.dart';
+import '../../widgets/buy_book_bottom_sheet.dart';
 
 class OpenLibraryBookDetailsScreen extends ConsumerStatefulWidget {
   final OpenLibraryBook book;
@@ -181,11 +182,13 @@ class _OpenLibraryBookDetailsScreenState extends ConsumerState<OpenLibraryBookDe
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _openInOpenLibrary(),
-                    icon: const Icon(Icons.open_in_browser),
-                    label: const Text('View on Open Library'),
+                    onPressed: () => _showBuyBottomSheet(),
+                    icon: const Icon(Icons.shopping_cart),
+                    label: const Text('Buy Book'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
@@ -408,6 +411,23 @@ class _OpenLibraryBookDetailsScreenState extends ConsumerState<OpenLibraryBookDe
     }
   }
 
+  // Add this method to the _OpenLibraryBookDetailsScreenState class:
+  void _showBuyBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => BuyBookBottomSheet(
+          book: widget.book,
+        ),
+      ),
+    );
+  }
+
   void _addToReadingList() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -417,3 +437,4 @@ class _OpenLibraryBookDetailsScreenState extends ConsumerState<OpenLibraryBookDe
     );
   }
 }
+

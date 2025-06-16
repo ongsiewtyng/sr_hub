@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/open_library_provider.dart';
 import '../../models/open_library_models.dart';
+import '../../services/purchase_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_display.dart';
@@ -399,6 +400,47 @@ class _BookstoreHomepageScreenState extends ConsumerState<BookstoreHomepageScree
                             ),
                           ),
                       ],
+                    ),
+                    // Add this after the rating row
+                    const SizedBox(height: 4),
+                    FutureBuilder<Map<String, dynamic>?>(
+                      future: PurchaseService.getPurchaseInfo(book.id),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData && snapshot.data != null) {
+                          final purchaseInfo = snapshot.data!;
+                          final format = purchaseInfo['format'] as String;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.green.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  format == 'epub' ? Icons.android :
+                                  format == 'pdf' ? Icons.picture_as_pdf :
+                                  Icons.menu_book,
+                                  size: 10,
+                                  color: Colors.green,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'Owned',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
                     ),
                   ],
                 ),
