@@ -4,4 +4,8 @@ class ApiConfig {
 
   static bool get hasGoogleBooksApiKey =>
       googleBooksApiKey != null && googleBooksApiKey!.isNotEmpty;
+
+  static const bool useMockData = true; // Set to false to use Firebase
+
+  static bool get isUsingMockData => useMockData;
 }

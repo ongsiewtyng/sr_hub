@@ -9,7 +9,6 @@ class LibraryRoom {
   final List<String> amenities;
   final String imageUrl;
   final bool isAvailable;
-  final double hourlyRate;
   final String location;
   final RoomType type;
 
@@ -21,7 +20,6 @@ class LibraryRoom {
     required this.amenities,
     required this.imageUrl,
     required this.isAvailable,
-    required this.hourlyRate,
     required this.location,
     required this.type,
   });

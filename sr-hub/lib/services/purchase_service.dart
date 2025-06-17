@@ -63,22 +63,23 @@ class PurchaseService {
   }
 
   // Get all purchased books
-  static Future<List<Map<String, dynamic>>> getPurchasedBooks() async {
+  static Future<Map<String, dynamic>?> getPurchasedBooks(String bookId) async {
     try {
       final user = _auth.currentUser;
-      if (user == null) return [];
+      if (user == null) return null;
 
-      final snapshot = await _firestore
+      final doc = await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('purchased_books')
-          .orderBy('purchaseDate', descending: true)
+          .doc(bookId)
           .get();
 
-      return snapshot.docs.map((doc) => doc.data()).toList();
+      return doc.exists ? doc.data() : null;
     } catch (e) {
-      print('❌ Purchased books fetch error: $e');
-      return [];
+      print('❌ Purchase check error: $e');
+      // Return null instead of crashing when permissions are denied
+      return null;
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:sr_hub/screens/library/room_reservation_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/firestore_provider.dart';
 import '../widgets/custom_app_bar.dart';
@@ -67,7 +68,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         index: _currentIndex,
         children: [
           _buildDashboard(userId),
-          const LibraryMapScreen(),
+          //const LibraryMapScreen(),
+          const RoomReservationScreen(),
           const BookstoreHomepageScreen(),
           const ResourceSearchScreen(),
           const ProfileScreen(),
