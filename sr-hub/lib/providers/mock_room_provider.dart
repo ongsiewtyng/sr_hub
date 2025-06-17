@@ -131,7 +131,6 @@ class MockRoomData {
         startTime: startTime,
         endTime: endTime,
         isAvailable: isAvailable,
-        price: 10.0,
       ));
     }
 
@@ -161,7 +160,6 @@ class MockRoomData {
       date: date,
       timeSlot: timeSlot,
       status: ReservationStatus.confirmed,
-      totalPrice: timeSlot.price,
       createdAt: DateTime.now(),
       notes: notes,
     );

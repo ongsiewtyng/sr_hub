@@ -1,82 +1,53 @@
-// lib/providers/room_reservation_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/library_models.dart';
-import 'mock_room_provider.dart'; // Add this import
-import '../config/api_config.dart';
 import '../services/room_reservation_service.dart';
-
-
-// Selected date provider
-final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 
 // Selected room provider
 final selectedRoomProvider = StateProvider<LibraryRoom?>((ref) => null);
 
+// Selected date provider
+final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
+
 // Selected time slot provider
 final selectedTimeSlotProvider = StateProvider<TimeSlot?>((ref) => null);
 
-// Available rooms provider - NOW USING MOCK DATA
+// Available rooms provider
 final availableRoomsProvider = FutureProvider<List<LibraryRoom>>((ref) async {
-  if (ApiConfig.useMockData) {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return MockRoomData.getAllRooms();
-  } else {
-    return await RoomReservationService.getAvailableRooms();
-  }
+  print('🔄 Fetching available rooms...');
+  final rooms = await RoomReservationService.getAvailableRooms();
+  print('✅ Rooms provider returned ${rooms.length} rooms');
+  return rooms;
 });
 
-// Rooms by type provider - NOW USING MOCK DATA
-final roomsByTypeProvider = FutureProvider.family<List<LibraryRoom>, RoomType>((ref, type) async {
-  await Future.delayed(const Duration(milliseconds: 300));
-  return MockRoomData.getRoomsByType(type);
+// Time slots for a specific room provider - THIS WAS MISSING
+final timeSlotsForRoomProvider = FutureProvider.family<List<TimeSlot>, String>((ref, roomId) async {
+  final selectedDate = ref.watch(selectedDateProvider);
+  print('🔄 Fetching time slots for room: $roomId on ${selectedDate.toString()}');
+
+  final timeSlots = await RoomReservationService.getAvailableTimeSlots(
+    roomId: roomId,
+    date: selectedDate,
+  );
+
+  print('✅ Time slots provider returned ${timeSlots.length} slots');
+  return timeSlots;
 });
 
-// Available time slots provider - NOW USING MOCK DATA
-final availableTimeSlotsProvider = FutureProvider.family<List<TimeSlot>, Map<String, dynamic>>((ref, params) async {
-  final roomId = params['roomId'] as String;
-  final date = params['date'] as DateTime;
-
-  await Future.delayed(const Duration(milliseconds: 400));
-  return MockRoomData.generateTimeSlots(roomId: roomId, date: date);
-});
-
-// User reservations provider - NOW USING MOCK DATA
+// User reservations provider
 final userReservationsProvider = FutureProvider<List<RoomReservation>>((ref) async {
-  await Future.delayed(const Duration(milliseconds: 300));
-  return MockRoomData.getUserReservations();
+  print('🔄 Fetching user reservations...');
+  final reservations = await RoomReservationService.getUserReservations();
+  print('✅ User reservations provider returned ${reservations.length} reservations');
+  return reservations;
 });
 
-// Reservation state provider
-final reservationStateProvider = StateNotifierProvider<ReservationStateNotifier, ReservationState>((ref) {
+// Reservation state notifier for making reservations
+final reservationStateProvider = StateNotifierProvider<ReservationStateNotifier, AsyncValue<String?>>((ref) {
   return ReservationStateNotifier();
 });
 
-class ReservationState {
-  final bool isLoading;
-  final String? error;
-  final String? successMessage;
-
-  ReservationState({
-    this.isLoading = false,
-    this.error,
-    this.successMessage,
-  });
-
-  ReservationState copyWith({
-    bool? isLoading,
-    String? error,
-    String? successMessage,
-  }) {
-    return ReservationState(
-      isLoading: isLoading ?? this.isLoading,
-      error: error,
-      successMessage: successMessage,
-    );
-  }
-}
-
-class ReservationStateNotifier extends StateNotifier<ReservationState> {
-  ReservationStateNotifier() : super(ReservationState());
+class ReservationStateNotifier extends StateNotifier<AsyncValue<String?>> {
+  ReservationStateNotifier() : super(const AsyncValue.data(null));
 
   Future<String?> makeReservation({
     required LibraryRoom room,
@@ -84,35 +55,30 @@ class ReservationStateNotifier extends StateNotifier<ReservationState> {
     required TimeSlot timeSlot,
     String? notes,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = const AsyncValue.loading();
 
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Use mock data instead of Firebase
-      final reservationId = MockRoomData.addReservation(
+      print('🔄 Making reservation...');
+      final reservationId = await RoomReservationService.makeReservation(
         room: room,
         date: date,
         timeSlot: timeSlot,
         notes: notes,
       );
 
-      state = state.copyWith(
-        isLoading: false,
-        successMessage: 'Reservation confirmed!',
-      );
-      return reservationId;
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'Error: $e',
-      );
+      if (reservationId != null) {
+        state = AsyncValue.data(reservationId);
+        print('✅ Reservation successful: $reservationId');
+        return reservationId;
+      } else {
+        state = const AsyncValue.error('Failed to create reservation', StackTrace.empty);
+        print('❌ Reservation failed');
+        return null;
+      }
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      print('❌ Reservation error: $error');
       return null;
     }
-  }
-
-  void clearMessages() {
-    state = state.copyWith(error: null, successMessage: null);
   }
 }

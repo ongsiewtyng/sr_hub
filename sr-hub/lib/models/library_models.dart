@@ -33,7 +33,6 @@ class LibraryRoom {
       amenities: List<String>.from(json['amenities'] ?? []),
       imageUrl: json['imageUrl'] ?? '',
       isAvailable: json['isAvailable'] ?? true,
-      hourlyRate: (json['hourlyRate'] ?? 0.0).toDouble(),
       location: json['location'] ?? '',
       type: RoomType.values.firstWhere(
             (e) => e.toString() == 'RoomType.${json['type']}',
@@ -51,7 +50,6 @@ class LibraryRoom {
       'amenities': amenities,
       'imageUrl': imageUrl,
       'isAvailable': isAvailable,
-      'hourlyRate': hourlyRate,
       'location': location,
       'type': type.toString().split('.').last,
     };
@@ -72,14 +70,12 @@ class TimeSlot {
   final DateTime startTime;
   final DateTime endTime;
   final bool isAvailable;
-  final double price;
 
   TimeSlot({
     required this.id,
     required this.startTime,
     required this.endTime,
     required this.isAvailable,
-    required this.price,
   });
 
   String get displayTime {
@@ -96,7 +92,6 @@ class TimeSlot {
       startTime: (json['startTime'] as Timestamp).toDate(),
       endTime: (json['endTime'] as Timestamp).toDate(),
       isAvailable: json['isAvailable'] ?? true,
-      price: (json['price'] ?? 0.0).toDouble(),
     );
   }
 
@@ -106,7 +101,6 @@ class TimeSlot {
       'startTime': Timestamp.fromDate(startTime),
       'endTime': Timestamp.fromDate(endTime),
       'isAvailable': isAvailable,
-      'price': price,
     };
   }
 }
@@ -119,7 +113,6 @@ class RoomReservation {
   final DateTime date;
   final TimeSlot timeSlot;
   final ReservationStatus status;
-  final double totalPrice;
   final DateTime createdAt;
   final String? notes;
 
@@ -131,7 +124,6 @@ class RoomReservation {
     required this.date,
     required this.timeSlot,
     required this.status,
-    required this.totalPrice,
     required this.createdAt,
     this.notes,
   });
@@ -148,7 +140,6 @@ class RoomReservation {
             (e) => e.toString() == 'ReservationStatus.${json['status']}',
         orElse: () => ReservationStatus.pending,
       ),
-      totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
       createdAt: (json['createdAt'] as Timestamp).toDate(),
       notes: json['notes'],
     );
@@ -163,7 +154,6 @@ class RoomReservation {
       'date': Timestamp.fromDate(date),
       'timeSlot': timeSlot.toJson(),
       'status': status.toString().split('.').last,
-      'totalPrice': totalPrice,
       'createdAt': Timestamp.fromDate(createdAt),
       'notes': notes,
     };

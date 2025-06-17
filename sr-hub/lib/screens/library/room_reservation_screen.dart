@@ -1,10 +1,8 @@
-// lib/screens/library/room_reservation_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../models/library_models.dart';
 import '../../providers/room_reservation_provider.dart';
-import '../../services/sample_data_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_display.dart';
@@ -18,14 +16,8 @@ class RoomReservationScreen extends ConsumerStatefulWidget {
 
 class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
   final PageController _pageController = PageController();
+  final TextEditingController _notesController = TextEditingController();
   int _currentStep = 0;
-  final _notesController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _addTestRoomIfNeeded();
-  }
 
   @override
   void dispose() {
@@ -34,193 +26,108 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     super.dispose();
   }
 
-  void _nextStep() {
-    if (_currentStep < 3) {
-      setState(() => _currentStep++);
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() => _currentStep--);
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const CustomAppBar(title: 'Reserve a Room'),
       body: Column(
         children: [
-          // Progress Indicator
-          _buildProgressIndicator(),
-
-          // Page Content
+          _buildStepIndicator(),
           Expanded(
             child: PageView(
               controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (index) {
+                setState(() {
+                  _currentStep = index;
+                });
+              },
               children: [
-                _buildDateSelectionStep(),
                 _buildRoomSelectionStep(),
+                _buildDateSelectionStep(),
                 _buildTimeSlotSelectionStep(),
                 _buildSummaryStep(),
               ],
             ),
           ),
-
-          // Navigation Buttons
           _buildNavigationButtons(),
         ],
       ),
     );
   }
 
-  Widget _buildProgressIndicator() {
+  Widget _buildStepIndicator() {
     return Container(
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          for (int i = 0; i < 4; i++) ...[
-            _buildStepIndicator(
-              step: i + 1,
-              title: _getStepTitle(i),
-              isActive: i == _currentStep,
-              isCompleted: i < _currentStep,
-            ),
-            if (i < 3)
-              Expanded(
-                child: Container(
-                  height: 2,
-                  color: i < _currentStep ? Theme.of(context).primaryColor : Colors.grey.shade300,
-                ),
-              ),
-          ],
+          _buildStepCircle(0, 'Room'),
+          _buildStepLine(0),
+          _buildStepCircle(1, 'Date'),
+          _buildStepLine(1),
+          _buildStepCircle(2, 'Time'),
+          _buildStepLine(2),
+          _buildStepCircle(3, 'Summary'),
         ],
       ),
     );
   }
 
-  Widget _buildStepIndicator({
-    required int step,
-    required String title,
-    required bool isActive,
-    required bool isCompleted,
-  }) {
-    return Column(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isCompleted || isActive
-                ? Theme.of(context).primaryColor
-                : Colors.grey.shade300,
-          ),
-          child: Center(
-            child: isCompleted
-                ? const Icon(Icons.check, color: Colors.white, size: 18)
-                : Text(
-              step.toString(),
-              style: TextStyle(
-                color: isActive ? Colors.white : Colors.grey.shade600,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+  Widget _buildStepCircle(int step, String label) {
+    final isActive = step <= _currentStep;
+    final isCurrent = step == _currentStep;
+
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isActive
+                  ? Theme.of(context).primaryColor
+                  : Colors.grey.shade300,
+              border: isCurrent
+                  ? Border.all(color: Theme.of(context).primaryColor, width: 2)
+                  : null,
+            ),
+            child: Center(
+              child: isActive
+                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  : Text(
+                '${step + 1}',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            color: isActive ? Theme.of(context).primaryColor : Colors.grey.shade600,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  String _getStepTitle(int step) {
-    switch (step) {
-      case 0: return 'Date';
-      case 1: return 'Room';
-      case 2: return 'Time';
-      case 3: return 'Summary';
-      default: return '';
-    }
-  }
-
-  Widget _buildDateSelectionStep() {
-    final selectedDate = ref.watch(selectedDateProvider);
-
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 4),
           Text(
-            'Select Date',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Choose the date for your room reservation',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 24),
-
-          Card(
-            child: CalendarDatePicker(
-              initialDate: selectedDate,
-              firstDate: DateTime.now(),
-              lastDate: DateTime.now().add(const Duration(days: 30)),
-              onDateChanged: (date) {
-                ref.read(selectedDateProvider.notifier).state = date;
-              },
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.shade200),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.blue.shade700),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Selected: ${DateFormat('EEEE, MMMM d, y').format(selectedDate)}',
-                    style: TextStyle(
-                      color: Colors.blue.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isActive
+                  ? Theme.of(context).primaryColor
+                  : Colors.grey.shade600,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStepLine(int step) {
+    final isActive = step < _currentStep;
+    return Expanded(
+      child: Container(
+        height: 2,
+        margin: const EdgeInsets.only(bottom: 20),
+        color: isActive
+            ? Theme.of(context).primaryColor
+            : Colors.grey.shade300,
       ),
     );
   }
@@ -235,14 +142,14 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Select Room',
+            'Select a Room',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose a room that fits your needs',
+            'Choose from our available study rooms',
             style: TextStyle(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 24),
@@ -257,7 +164,7 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
               data: (rooms) {
                 if (rooms.isEmpty) {
                   return const Center(
-                    child: Text('No rooms available'),
+                    child: Text('No rooms available at the moment'),
                   );
                 }
 
@@ -282,121 +189,78 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
                       child: InkWell(
                         onTap: () {
                           ref.read(selectedRoomProvider.notifier).state = room;
+                          print('🏠 Room selected: ${room.name}');
                         },
                         borderRadius: BorderRadius.circular(12),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Room Image
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: Colors.grey.shade200,
-                                ),
-                                child: room.imageUrl.isNotEmpty
-                                    ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    room.imageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Icon(
-                                        _getRoomIcon(room.type),
-                                        size: 32,
-                                        color: Colors.grey.shade400,
-                                      );
-                                    },
-                                  ),
-                                )
-                                    : Icon(
-                                  _getRoomIcon(room.type),
-                                  size: 32,
-                                  color: Colors.grey.shade400,
-                                ),
-                              ),
-
-                              const SizedBox(width: 16),
-
-                              // Room Details
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
                                       room.name,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      room.description,
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 14,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Theme.of(context).primaryColor,
                                     ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.people,
-                                          size: 16,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${room.capacity} people',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                      ],
-                                    ),
-                                    if (room.amenities.isNotEmpty) ...[
-                                      const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 4,
-                                        children: room.amenities.take(3).map((amenity) {
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context).primaryColor.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              amenity,
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                color: Theme.of(context).primaryColor,
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ],
-                                  ],
-                                ),
+                                ],
                               ),
-
-                              // Selection Indicator
-                              if (isSelected)
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Theme.of(context).primaryColor,
-                                  size: 24,
+                              const SizedBox(height: 8),
+                              Text(
+                                room.description,
+                                style: TextStyle(color: Colors.grey.shade600),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.people,
+                                    size: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Capacity: ${room.capacity}',
+                                    style: TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    room.location,
+                                    style: TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                              if (room.amenities.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  children: room.amenities.map((amenity) {
+                                    return Chip(
+                                      label: Text(
+                                        amenity,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                                    );
+                                  }).toList(),
                                 ),
+                              ],
                             ],
                           ),
                         ),
@@ -405,6 +269,54 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
                   },
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateSelectionStep() {
+    final selectedDate = ref.watch(selectedDateProvider);
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Select Date',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Choose your preferred date',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 24),
+
+          Expanded(
+            child: Center(
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: CalendarDatePicker(
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 30)),
+                    onDateChanged: (date) {
+                      ref.read(selectedDateProvider.notifier).state = date;
+                      print('📅 Date selected: ${date.toString()}');
+                    },
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -423,10 +335,10 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
       );
     }
 
-    final timeSlotsAsync = ref.watch(availableTimeSlotsProvider({
-      'roomId': selectedRoom.id,
-      'date': selectedDate,
-    }));
+    print('🔄 Building time slot step for room: ${selectedRoom.id}');
+
+    // Use the provider that watches date changes
+    final timeSlotsAsync = ref.watch(timeSlotsForRoomProvider(selectedRoom.id));
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -444,22 +356,68 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
             'Choose your preferred time slot for ${selectedRoom.name}',
             style: TextStyle(color: Colors.grey.shade600),
           ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: Theme.of(context).primaryColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat('EEEE, MMMM d, y').format(selectedDate),
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
 
           Expanded(
             child: timeSlotsAsync.when(
               loading: () => const Center(child: LoadingIndicator()),
-              error: (error, stack) => ErrorDisplay(
-                message: 'Failed to load time slots: $error',
-                onRetry: () => ref.invalidate(availableTimeSlotsProvider({
-                  'roomId': selectedRoom.id,
-                  'date': selectedDate,
-                })),
-              ),
+              error: (error, stack) {
+                print('❌ Time slots error: $error');
+                return ErrorDisplay(
+                  message: 'Failed to load time slots: $error',
+                  onRetry: () {
+                    print('🔄 Retrying time slots for room: ${selectedRoom.id}');
+                    ref.invalidate(timeSlotsForRoomProvider(selectedRoom.id));
+                  },
+                );
+              },
               data: (timeSlots) {
+                print('✅ Received ${timeSlots.length} time slots in UI');
+
                 if (timeSlots.isEmpty) {
-                  return const Center(
-                    child: Text('No time slots available for this date'),
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.schedule_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('No time slots available for this date'),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Please try selecting a different date',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
@@ -468,7 +426,7 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 2.5,
+                    childAspectRatio: 2.8, // Increased from 2.5 to give more height
                   ),
                   itemCount: timeSlots.length,
                   itemBuilder: (context, index) {
@@ -476,73 +434,7 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
                     final isSelected = selectedTimeSlot?.id == timeSlot.id;
                     final isAvailable = timeSlot.isAvailable;
 
-                    return Card(
-                      elevation: isSelected ? 4 : 1,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: isSelected
-                              ? Theme.of(context).primaryColor
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                      child: InkWell(
-                        onTap: isAvailable ? () {
-                          ref.read(selectedTimeSlotProvider.notifier).state = timeSlot;
-                        } : null,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: !isAvailable
-                                ? Colors.grey.shade100
-                                : isSelected
-                                ? Theme.of(context).primaryColor.withOpacity(0.1)
-                                : null,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                timeSlot.displayTime,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: !isAvailable
-                                      ? Colors.grey.shade400
-                                      : isSelected
-                                      ? Theme.of(context).primaryColor
-                                      : null,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'RM ${timeSlot.price.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: !isAvailable
-                                      ? Colors.grey.shade400
-                                      : Colors.grey.shade600,
-                                ),
-                              ),
-                              if (!isAvailable) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Booked',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.red.shade600,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
+                    return _buildTimeSlotCard(timeSlot, isSelected, isAvailable);
                   },
                 );
               },
@@ -553,11 +445,109 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     );
   }
 
+  // Separate method for time slot card to fix overflow
+  Widget _buildTimeSlotCard(TimeSlot timeSlot, bool isSelected, bool isAvailable) {
+    return Card(
+      elevation: isSelected ? 4 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: InkWell(
+        onTap: isAvailable ? () {
+          ref.read(selectedTimeSlotProvider.notifier).state = timeSlot;
+          print('⏰ Time slot selected: ${timeSlot.displayTime}');
+        } : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(8), // Reduced padding
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: !isAvailable
+                ? Colors.grey.shade100
+                : isSelected
+                ? Theme.of(context).primaryColor.withOpacity(0.1)
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // Important: Use minimum space
+            children: [
+              // Time display
+              Flexible( // Use Flexible instead of fixed SizedBox
+                child: Text(
+                  timeSlot.displayTime,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13, // Slightly smaller font
+                    color: !isAvailable
+                        ? Colors.grey.shade400
+                        : isSelected
+                        ? Theme.of(context).primaryColor
+                        : null,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
+              // Small spacing
+              const SizedBox(height: 2),
+
+              // Duration
+              Flexible(
+                child: Text(
+                  '${timeSlot.duration.inHours} hour',
+                  style: TextStyle(
+                    fontSize: 11, // Smaller font
+                    color: !isAvailable
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                ),
+              ),
+
+              // Booked status (only if not available)
+              if (!isAvailable) ...[
+                const SizedBox(height: 2),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Booked',
+                      style: TextStyle(
+                        fontSize: 9, // Very small font
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSummaryStep() {
     final selectedRoom = ref.watch(selectedRoomProvider);
     final selectedDate = ref.watch(selectedDateProvider);
     final selectedTimeSlot = ref.watch(selectedTimeSlotProvider);
-    final reservationState = ref.watch(reservationStateProvider);
 
     if (selectedRoom == null || selectedTimeSlot == null) {
       return const Center(
@@ -578,7 +568,7 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Please review your booking details',
+            'Please review your reservation details',
             style: TextStyle(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 24),
@@ -587,185 +577,104 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  // Room Details Card
                   Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                _getRoomIcon(selectedRoom.type),
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Room Details',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          _buildSummaryRow('Room', selectedRoom.name),
-                          _buildSummaryRow('Location', selectedRoom.location),
-                          _buildSummaryRow('Capacity', '${selectedRoom.capacity} people'),
-                          if (selectedRoom.amenities.isNotEmpty)
-                            _buildSummaryRow('Amenities', selectedRoom.amenities.join(', ')),
-                        ],
-                      ),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Booking Details Card
-                  Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.schedule,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Booking Details',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'Reservation Details',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          const SizedBox(height: 12),
-                          _buildSummaryRow('Date', DateFormat('EEEE, MMMM d, y').format(selectedDate)),
-                          _buildSummaryRow('Time', selectedTimeSlot.displayTime),
-                          _buildSummaryRow('Duration', '${selectedTimeSlot.duration.inHours} hour(s)'),
-                        ],
-                      ),
-                    ),
-                  ),
+                          const SizedBox(height: 16),
 
-                  const SizedBox(height: 16),
-
-                  // Price Details Card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.attach_money,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Price Details',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          _buildSummaryRow('Hourly Rate', 'RM ${selectedRoom.hourlyRate.toStringAsFixed(2)}'),
-                          _buildSummaryRow('Duration', '${selectedTimeSlot.duration.inHours} hour(s)'),
-                          const Divider(),
                           _buildSummaryRow(
-                            'Total Amount',
-                            'RM ${selectedTimeSlot.price.toStringAsFixed(2)}',
-                            isTotal: true,
+                            icon: Icons.meeting_room,
+                            label: 'Room',
+                            value: selectedRoom.name,
+                          ),
+                          const SizedBox(height: 12),
+
+                          _buildSummaryRow(
+                            icon: Icons.location_on,
+                            label: 'Location',
+                            value: selectedRoom.location,
+                          ),
+                          const SizedBox(height: 12),
+
+                          _buildSummaryRow(
+                            icon: Icons.calendar_today,
+                            label: 'Date',
+                            value: DateFormat('EEEE, MMMM d, y').format(selectedDate),
+                          ),
+                          const SizedBox(height: 12),
+
+                          _buildSummaryRow(
+                            icon: Icons.access_time,
+                            label: 'Time',
+                            value: selectedTimeSlot.displayTime,
+                          ),
+                          const SizedBox(height: 12),
+
+                          _buildSummaryRow(
+                            icon: Icons.schedule,
+                            label: 'Duration',
+                            value: '${selectedTimeSlot.duration.inHours} hour',
+                          ),
+                          const SizedBox(height: 12),
+
+                          _buildSummaryRow(
+                            icon: Icons.people,
+                            label: 'Capacity',
+                            value: '${selectedRoom.capacity} people',
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // Notes Section
                   Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.note,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Additional Notes (Optional)',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'Additional Notes (Optional)',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           TextField(
                             controller: _notesController,
-                            decoration: const InputDecoration(
-                              hintText: 'Any special requirements or notes...',
-                              border: OutlineInputBorder(),
-                            ),
                             maxLines: 3,
+                            decoration: InputDecoration(
+                              hintText: 'Add any special requirements or notes...',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.all(12),
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ),
                 ],
-              ),
-            ),
-          ),
-
-          // Reserve Button
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: reservationState.isLoading ? null : _makeReservation,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-              ),
-              child: reservationState.isLoading
-                  ? const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Text('Processing...'),
-                ],
-              )
-                  : Text(
-                'Reserve Room - RM ${selectedTimeSlot.price.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
               ),
             ),
           ),
@@ -774,40 +683,48 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+  Widget _buildSummaryRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: Theme.of(context).primaryColor,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-                fontSize: isTotal ? 16 : 14,
-                color: isTotal ? Theme.of(context).primaryColor : null,
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildNavigationButtons() {
     final selectedRoom = ref.watch(selectedRoomProvider);
     final selectedTimeSlot = ref.watch(selectedTimeSlotProvider);
+    final reservationState = ref.watch(reservationStateProvider);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -815,7 +732,7 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.grey.shade300,
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),
@@ -826,15 +743,28 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
           if (_currentStep > 0)
             Expanded(
               child: OutlinedButton(
-                onPressed: _previousStep,
-                child: const Text('Previous'),
+                onPressed: reservationState.isLoading ? null : () {
+                  _pageController.previousPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: const Text('Back'),
               ),
             ),
+
           if (_currentStep > 0) const SizedBox(width: 16),
+
           Expanded(
             child: ElevatedButton(
-              onPressed: _canProceed() ? (_currentStep < 3 ? _nextStep : null) : null,
-              child: Text(_currentStep < 3 ? 'Next' : 'Complete'),
+              onPressed: _getNextButtonAction(selectedRoom, selectedTimeSlot, reservationState),
+              child: reservationState.isLoading
+                  ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+                  : Text(_getNextButtonText()),
             ),
           ),
         ],
@@ -842,30 +772,46 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     );
   }
 
-  bool _canProceed() {
+  VoidCallback? _getNextButtonAction(
+      LibraryRoom? selectedRoom,
+      TimeSlot? selectedTimeSlot,
+      AsyncValue<String?> reservationState,
+      ) {
+    if (reservationState.isLoading) return null;
+
     switch (_currentStep) {
-      case 0: return true; // Date is always selected
-      case 1: return ref.read(selectedRoomProvider) != null;
-      case 2: return ref.read(selectedTimeSlotProvider) != null;
-      case 3: return true;
-      default: return false;
+      case 0:
+        return selectedRoom != null ? _nextStep : null;
+      case 1:
+        return _nextStep;
+      case 2:
+        return selectedTimeSlot != null ? _nextStep : null;
+      case 3:
+        return _makeReservation;
+      default:
+        return null;
     }
   }
 
-  Future<void> _addTestRoomIfNeeded() async {
-    try {
-      // Check if any rooms exist
-      final rooms = await SampleDataService.checkExistingRooms();
+  String _getNextButtonText() {
+    switch (_currentStep) {
+      case 0:
+      case 1:
+      case 2:
+        return 'Next';
+      case 3:
+        return 'Confirm Reservation';
+      default:
+        return 'Next';
+    }
+  }
 
-      if (rooms.isEmpty) {
-        print('🔄 No rooms found, adding test room...');
-        await SampleDataService.addTestRoom();
-
-        // Refresh the provider
-        ref.invalidate(availableRoomsProvider);
-      }
-    } catch (e) {
-      print('❌ Error checking/adding rooms: $e');
+  void _nextStep() {
+    if (_currentStep < 3) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
@@ -884,12 +830,12 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     );
 
     if (reservationId != null && mounted) {
-      // Show success dialog
+      // Show success dialog with redirect
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          icon: Icon(
+          icon: const Icon(
             Icons.check_circle,
             color: Colors.green,
             size: 48,
@@ -898,14 +844,37 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Your room has been successfully reserved.'),
-              const SizedBox(height: 8),
-              Text(
-                'Reservation ID: $reservationId',
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
+              const Text('Your room has been successfully reserved.'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Reservation Details',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Room: ${selectedRoom.name}'),
+                    Text('Date: ${DateFormat('MMM d, y').format(selectedDate)}'),
+                    Text('Time: ${selectedTimeSlot.displayTime}'),
+                    const SizedBox(height: 8),
+                    Text(
+                      'ID: $reservationId',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -914,8 +883,35 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Go back to previous screen
+                _redirectToHome();
               },
+              child: const Text('View My Reservations'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                _redirectToHome();
+              },
+              child: const Text('Go to Home'),
+            ),
+          ],
+        ),
+      );
+    } else if (mounted) {
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(
+            Icons.error,
+            color: Colors.red,
+            size: 48,
+          ),
+          title: const Text('Reservation Failed'),
+          content: const Text('Sorry, we couldn\'t complete your reservation. Please try again.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('OK'),
             ),
           ],
@@ -924,14 +920,19 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     }
   }
 
-  IconData _getRoomIcon(RoomType type) {
-    switch (type) {
-      case RoomType.study: return Icons.menu_book;
-      case RoomType.meeting: return Icons.meeting_room;
-      case RoomType.discussion: return Icons.groups;
-      case RoomType.silent: return Icons.volume_off;
-      case RoomType.computer: return Icons.computer;
-      case RoomType.group: return Icons.group_work;
-    }
+  void _redirectToHome() {
+    // Clear all selections
+    ref.read(selectedRoomProvider.notifier).state = null;
+    ref.read(selectedTimeSlotProvider.notifier).state = null;
+    ref.read(selectedDateProvider.notifier).state = DateTime.now();
+
+    // Navigate to home and clear the stack
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/', // Your home route
+          (route) => false,
+    );
+
+    // Alternative if using GoRouter:
+    // context.go('/');
   }
 }
