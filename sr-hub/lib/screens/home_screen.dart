@@ -1,4 +1,3 @@
-// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sr_hub/screens/library/room_reservation_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/firestore_provider.dart';
+import '../providers/room_reservation_provider.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_bottom_nav.dart';
 import '../widgets/book_card.dart';
@@ -20,6 +20,7 @@ import '../models/user_model.dart';
 import '../models/book_model.dart';
 import '../models/resource_model.dart';
 import '../models/reservation_model.dart';
+import '../models/library_models.dart';
 import 'library/library_map_screen.dart';
 import 'bookstore/bookstore_homepage_screen.dart';
 import 'resources/resources_search_screen.dart';
@@ -68,7 +69,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         index: _currentIndex,
         children: [
           _buildDashboard(userId),
-          //const LibraryMapScreen(),
           const RoomReservationScreen(),
           const BookstoreHomepageScreen(),
           const ResourceSearchScreen(),
@@ -117,7 +117,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final currentUser = ref.watch(currentUserProvider);
     final featuredBooks = ref.watch(featuredBooksProvider);
     final resources = ref.watch(resourcesProvider);
-    final reservations = ref.watch(userReservationsProvider(userId));
+    // Use the firestore provider for general reservations
+    final generalReservations = ref.watch(userReservationsProvider(userId));
+    // Use the room reservation provider for room reservations
+    final roomReservations = ref.watch(upcomingRoomReservationsProvider);
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -160,6 +163,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ref.refresh(featuredBooksProvider);
           ref.refresh(resourcesProvider);
           ref.refresh(userReservationsProvider(userId));
+          ref.refresh(upcomingRoomReservationsProvider);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -176,8 +180,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // Quick actions
               _buildQuickActions(),
 
-              // Upcoming reservations
-              reservations.when(
+              // Room reservations section (from library system)
+              roomReservations.when(
+                data: (roomReservationList) => _buildRoomReservationsSection(roomReservationList),
+                loading: () => _buildLoadingSection('Loading room reservations...', 200),
+                error: (error, stack) => _buildErrorSection(
+                  'Failed to load room reservations',
+                      () => ref.refresh(upcomingRoomReservationsProvider),
+                ),
+              ),
+
+              // Other reservations (existing system)
+              generalReservations.when(
                 data: (reservationList) => _buildReservationsSection(reservationList),
                 loading: () => _buildLoadingSection('Loading reservations...', 200),
                 error: (error, stack) => _buildErrorSection(
@@ -433,7 +447,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               _buildQuickAction(
                 context,
                 icon: Icons.event_seat,
-                label: 'Reserve Seat',
+                label: 'Reserve Room',
                 onTap: () => setState(() => _currentIndex = 1),
                 color: Colors.blue,
               ),
@@ -454,12 +468,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               _buildQuickAction(
                 context,
                 icon: Icons.history,
-                label: 'History',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('History feature coming soon!')),
-                  );
-                },
+                label: 'My Reservations',
+                onTap: () => context.go('/my-reservations'),
                 color: Colors.orange,
               ),
             ],
@@ -507,6 +517,131 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Widget _buildRoomReservationsSection(List<RoomReservation> roomReservations) {
+    if (roomReservations.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Upcoming Room Reservations',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.go('/my-reservations'),
+                child: const Text('See All'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Column(
+            children: roomReservations
+                .take(2)
+                .map((reservation) => _buildRoomReservationCard(reservation))
+                .toList(),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoomReservationCard(RoomReservation reservation) {
+    final now = DateTime.now();
+    final isToday = reservation.date.year == now.year &&
+        reservation.date.month == now.month &&
+        reservation.date.day == now.day;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: isToday ? 3 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isToday ? BorderSide(color: Theme.of(context).primaryColor, width: 2) : BorderSide.none,
+      ),
+      child: InkWell(
+        onTap: () => context.go('/my-reservations'),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isToday
+                      ? Theme.of(context).primaryColor.withOpacity(0.1)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.meeting_room,
+                  color: isToday
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey.shade600,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      reservation.roomName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${isToday ? "Today" : "Upcoming"} • ${reservation.timeSlot.displayTime}',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isToday)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'TODAY',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: Colors.grey.shade400,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildReservationsSection(List<Reservation> reservations) {
     final upcomingReservations = reservations.where((r) => r.isUpcoming).toList();
 
@@ -519,7 +654,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Upcoming Reservations',
+                'Other Reservations',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -538,7 +673,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SizedBox(height: 8),
           upcomingReservations.isEmpty
               ? EmptyState(
-            message: 'You have no upcoming reservations',
+            message: 'You have no other upcoming reservations',
             icon: Icons.event_busy,
             actionText: 'Reserve a Seat',
             onAction: () => setState(() => _currentIndex = 1),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../../models/library_models.dart';
 import '../../providers/room_reservation_provider.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -830,6 +831,10 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     );
 
     if (reservationId != null && mounted) {
+      // Invalidate providers to refresh data - using correct provider names
+      ref.invalidate(roomReservationsProvider);
+      ref.invalidate(upcomingRoomReservationsProvider);
+
       // Show success dialog with redirect
       showDialog(
         context: context,
@@ -883,7 +888,7 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
-                _redirectToHome();
+                _clearSelectionsAndNavigateToReservations();
               },
               child: const Text('View My Reservations'),
             ),
@@ -920,19 +925,23 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     }
   }
 
+  void _clearSelectionsAndNavigateToReservations() {
+    // Clear all selections
+    ref.read(selectedRoomProvider.notifier).state = null;
+    ref.read(selectedTimeSlotProvider.notifier).state = null;
+    ref.read(selectedDateProvider.notifier).state = DateTime.now();
+
+    // Navigate to reservations page using GoRouter
+    context.go('/my-reservations');
+  }
+
   void _redirectToHome() {
     // Clear all selections
     ref.read(selectedRoomProvider.notifier).state = null;
     ref.read(selectedTimeSlotProvider.notifier).state = null;
     ref.read(selectedDateProvider.notifier).state = DateTime.now();
 
-    // Navigate to home and clear the stack
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/', // Your home route
-          (route) => false,
-    );
-
-    // Alternative if using GoRouter:
-    // context.go('/');
+    // Navigate to home using GoRouter
+    context.go('/');
   }
 }
