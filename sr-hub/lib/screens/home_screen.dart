@@ -190,15 +190,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // Other reservations (existing system)
-              generalReservations.when(
-                data: (reservationList) => _buildReservationsSection(reservationList),
-                loading: () => _buildLoadingSection('Loading reservations...', 200),
-                error: (error, stack) => _buildErrorSection(
-                  'Failed to load reservations',
-                      () => ref.refresh(userReservationsProvider(userId)),
-                ),
-              ),
+              // // Other reservations (existing system)
+              // generalReservations.when(
+              //   data: (reservationList) => _buildReservationsSection(reservationList),
+              //   loading: () => _buildLoadingSection('Loading reservations...', 200),
+              //   error: (error, stack) => _buildErrorSection(
+              //     'Failed to load reservations',
+              //         () => ref.refresh(userReservationsProvider(userId)),
+              //   ),
+              // ),
 
               // Featured books
               featuredBooks.when(
@@ -650,26 +650,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Other Reservations',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('All reservations view coming soon!')),
-                  );
-                },
-                child: const Text('See All'),
-              ),
-            ],
-          ),
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //   children: [
+          //     const Text(
+          //       'Other Reservations',
+          //       style: TextStyle(
+          //         fontSize: 18,
+          //         fontWeight: FontWeight.bold,
+          //       ),
+          //     ),
+          //     TextButton(
+          //       onPressed: () {
+          //         ScaffoldMessenger.of(context).showSnackBar(
+          //           const SnackBar(content: Text('All reservations view coming soon!')),
+          //         );
+          //       },
+          //       child: const Text('See All'),
+          //     ),
+          //   ],
+          // ),
           const SizedBox(height: 8),
           upcomingReservations.isEmpty
               ? EmptyState(
