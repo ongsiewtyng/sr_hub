@@ -2,7 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/firestore_service.dart';
 import '../models/book_model.dart';
-import '../models/resource_model.dart';
+import '../models/resource_models.dart';
 import '../models/reservation_model.dart';
 import '../models/seat_model.dart';
 import '../models/floor_model.dart';

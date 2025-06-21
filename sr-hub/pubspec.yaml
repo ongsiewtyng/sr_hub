@@ -41,6 +41,7 @@ dependencies:
 
   # URL launcher for opening external links (Open Library)
   url_launcher: ^6.2.2
+  webview_flutter: ^4.2.2
 
   # Connectivity checking for better error handling
   connectivity_plus: ^5.0.2

@@ -18,7 +18,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/search_bar.dart';
 import '../models/user_model.dart';
 import '../models/book_model.dart';
-import '../models/resource_model.dart';
+import '../models/resource_models.dart';
 import '../models/reservation_model.dart';
 import '../models/library_models.dart';
 import 'library/library_map_screen.dart';
