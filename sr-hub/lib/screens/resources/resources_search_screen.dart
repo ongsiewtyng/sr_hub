@@ -1,159 +1,125 @@
-// lib/screens/resources/resource_search_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/resource_models.dart';
+import '../../providers/resource_providers.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/resource_card.dart';
 import '../../widgets/search_bar.dart';
-import '../../data/sample_data.dart';
+import '../../widgets/loading_indicator.dart';
+import '../../widgets/error_display.dart';
+import '../../widgets/empty_state.dart';
 
-class ResourceSearchScreen extends StatefulWidget {
+class ResourceSearchScreen extends ConsumerStatefulWidget {
   const ResourceSearchScreen({Key? key}) : super(key: key);
 
   @override
-  State<ResourceSearchScreen> createState() => _ResourceSearchScreenState();
+  ConsumerState<ResourceSearchScreen> createState() => _ResourceSearchScreenState();
 }
 
-class _ResourceSearchScreenState extends State<ResourceSearchScreen> {
-  final resources = SampleData.getResources();
-  String _selectedResourceType = 'all';
-  String _selectedSubject = 'all';
-
+class _ResourceSearchScreenState extends ConsumerState<ResourceSearchScreen> {
   @override
   Widget build(BuildContext context) {
+    final query = ref.watch(resourceSearchQueryProvider);
+    final selectedType = ref.watch(selectedResourceTypeProvider);
+    final searchResults = ref.watch(combinedSearchProvider(query));
+    final isQueryEmpty = query.trim().isEmpty;
+
     return Scaffold(
       appBar: const CustomAppBar(
         title: 'Resources',
-        actions: [
-          IconButton(
-            icon: Icon(Icons.history),
-            onPressed: null,
-          ),
-        ],
       ),
       body: Column(
         children: [
-          // Search bar
-          const CustomSearchBar(
-            hintText: 'Search for resources',
+          CustomSearchBar(
+            hintText: 'Search for books or research papers',
+            onSubmitted: (value) {
+              ref.read(resourceSearchQueryProvider.notifier).state = value;
+            },
+            showFilterButton: false,
           ),
-
-          // Filters
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                // Resource type filter
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedResourceType,
-                    decoration: const InputDecoration(
-                      labelText: 'Resource Type',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _selectedResourceType = value;
-                      });
-                    },
-                    items: const [
-                      DropdownMenuItem<String>(
-                        value: 'all',
-                        child: Text('All Types'),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'article',
-                        child: Text('Article'),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'video',
-                        child: Text('Video'),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'document',
-                        child: Text('Document'),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'dataset',
-                        child: Text('Dataset'),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // Subject filter
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedSubject,
-                    decoration: const InputDecoration(
-                      labelText: 'Subject',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _selectedSubject = value;
-                      });
-                    },
-                    items: const [
-                      DropdownMenuItem<String>(
-                        value: 'all',
-                        child: Text('All Subjects'),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'Computer Science',
-                        child: Text('Computer Science'),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'Design',
-                        child: Text('Design'),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'Statistics',
-                        child: Text('Statistics'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Results count
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  '${resources.length} results found',
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                  ),
-                ),
+            child: DropdownButtonFormField<ResourceType?>(
+              value: selectedType,
+              decoration: const InputDecoration(
+                labelText: 'Filter by type',
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              onChanged: (type) {
+                ref.read(selectedResourceTypeProvider.notifier).state = type;
+              },
+              items: const [
+                DropdownMenuItem<ResourceType?>(value: null, child: Text('All Types')),
+                DropdownMenuItem<ResourceType>(value: ResourceType.book, child: Text('Books')),
+                DropdownMenuItem<ResourceType>(value: ResourceType.researchPaper, child: Text('Research Papers')),
               ],
             ),
           ),
-
-          const SizedBox(height: 8),
-
-          // Results
+          const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              itemCount: resources.length,
-              itemBuilder: (context, index) {
-                final resource = resources[index];
-                return ResourceCard(
-                  resource: resource,
-                  onTap: () {},
-                  onSave: () {},
+            child: isQueryEmpty
+                ? _buildTrendingContent()
+                : searchResults.when(
+              data: (resources) {
+                if (resources.isEmpty) {
+                  return const EmptyState(
+                    message: 'No resources found',
+                    icon: Icons.search_off,
+                  );
+                }
+                return ListView.builder(
+                  itemCount: resources.length,
+                  itemBuilder: (context, index) {
+                    return ResourceCard(resource: resources[index]);
+                  },
                 );
               },
+              loading: () => const LoadingIndicator(message: 'Searching...'),
+              error: (error, stack) => ErrorDisplay(
+                message: 'Failed to load resources: $error',
+                onRetry: () {
+                  ref.refresh(combinedSearchProvider(query));
+                },
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTrendingContent() {
+    final trendingBooks = ref.watch(trendingBooksProvider);
+    final trendingPapers = ref.watch(trendingPapersProvider);
+
+    return trendingBooks.when(
+      data: (books) {
+        return trendingPapers.when(
+          data: (papers) {
+            final combined = [...books, ...papers];
+            if (combined.isEmpty) {
+              return const EmptyState(
+                message: 'No trending resources available',
+                icon: Icons.trending_down,
+              );
+            }
+
+            return ListView.builder(
+              itemCount: combined.length,
+              itemBuilder: (context, index) => ResourceCard(resource: combined[index]),
+            );
+          },
+          loading: () => const LoadingIndicator(message: 'Loading trending research papers...'),
+          error: (error, _) => ErrorDisplay(
+            message: 'Error loading papers: $error',
+            onRetry: () => ref.refresh(trendingPapersProvider),
+          ),
+        );
+      },
+      loading: () => const LoadingIndicator(message: 'Loading trending books...'),
+      error: (error, _) => ErrorDisplay(
+        message: 'Error loading books: $error',
+        onRetry: () => ref.refresh(trendingBooksProvider),
       ),
     );
   }
