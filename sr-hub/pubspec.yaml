@@ -68,6 +68,5 @@ flutter:
 
   # Add assets if you have any
   assets:
-    - assets/images/
     - assets/icons/
 
