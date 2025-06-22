@@ -1,37 +1,67 @@
-// lib/services/semantic_scholar_service.dart
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../models/resource_models.dart'; // Use the main resource models file
+import '../models/resource_models.dart';
 
 class SemanticScholarService {
   static const String _baseUrl = 'https://api.semanticscholar.org/graph/v1';
   static const Duration _timeout = Duration(seconds: 30);
 
-  // Search papers
+  // Default fields to fetch for paper search
+  static const List<String> defaultFields = [
+    'paperId',
+    'title',
+    'abstract',
+    'authors',
+    'venue',
+    'year',
+    'citationCount',
+    'fieldsOfStudy',
+    'url',
+    'openAccessPdf',
+    'publicationDate',
+  ];
+
+  /// Enhanced search with filters and pagination
   static Future<List<ResearchPaperResource>> searchPapers({
     required String query,
     int limit = 20,
     int offset = 0,
     List<String>? fields,
+    RangeValues? yearRange,
+    int? minCitations,
+    bool openAccessOnly = false,
+    String? fieldOfStudy,
   }) async {
     try {
-      final searchFields = fields ?? [
-        'paperId',
-        'title',
-        'abstract',
-        'authors',
-        'venue',
-        'year',
-        'citationCount',
-        'fieldsOfStudy',
-        'url',
-        'openAccessPdf',
-        'publicationDate',
-      ];
+      final searchFields = fields ?? defaultFields;
 
+      // Build filter expressions
+      final List<String> filters = [];
+
+      if (yearRange != null) {
+        filters.add('year:${yearRange.start.toInt()}-${yearRange.end.toInt()}');
+      }
+
+      if (minCitations != null) {
+        filters.add('citationCount:[$minCitations TO *]');
+      }
+
+      if (fieldOfStudy != null && fieldOfStudy.isNotEmpty) {
+        filters.add('fieldsOfStudy:$fieldOfStudy');
+      }
+
+      if (openAccessOnly) {
+        filters.add('isOpenAccess:true');
+      }
+
+      final fullQuery = [
+        query.trim(),
+        ...filters,
+      ].where((e) => e.isNotEmpty).join(' AND ');
 
       final queryParams = {
-        'query': query.trim(),
+        'query': fullQuery,
         'limit': limit.toString(),
         'offset': offset.toString(),
         'fields': searchFields.join(','),
@@ -39,7 +69,7 @@ class SemanticScholarService {
 
       final uri = Uri.parse('$_baseUrl/paper/search').replace(queryParameters: queryParams);
 
-      print('🔍 Semantic Scholar Search: $uri');
+      print('🔍 Semantic Scholar Search URI: $uri');
 
       final response = await http.get(
         uri,
@@ -69,7 +99,6 @@ class SemanticScholarService {
     }
   }
 
-  // Get paper details by ID
   static Future<ResearchPaperResource?> getPaperDetails(String paperId) async {
     try {
       final fields = [
@@ -118,7 +147,6 @@ class SemanticScholarService {
     }
   }
 
-  // Get papers by field of study
   static Future<List<ResearchPaperResource>> getPapersByField({
     required String fieldOfStudy,
     int limit = 20,
@@ -136,7 +164,6 @@ class SemanticScholarService {
     }
   }
 
-  // Get trending papers (highly cited recent papers)
   static Future<List<ResearchPaperResource>> getTrendingPapers({
     int limit = 20,
     int minCitations = 10,
@@ -159,7 +186,6 @@ class SemanticScholarService {
         allPapers.addAll(papers);
       }
 
-      // Sort by citation count and return unique papers
       final uniquePapers = <String, ResearchPaperResource>{};
       for (final paper in allPapers) {
         if (!uniquePapers.containsKey(paper.id)) {
@@ -177,7 +203,6 @@ class SemanticScholarService {
     }
   }
 
-  // Check API status
   static Future<bool> checkApiStatus() async {
     try {
       final response = await http.get(

@@ -1,140 +1,19 @@
-// lib/providers/resource_provider.dart
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/resource_models.dart';
-import '../services/open_library_service.dart';
 import '../services/semantic_scholar_service.dart';
 import '../services/bookmark_service.dart';
 
-// Search query and filters
+// Search query
 final resourceSearchQueryProvider = StateProvider<String>((ref) => '');
-final selectedResourceTypeProvider = StateProvider<ResourceType?>((ref) => null);
 
-// Book search provider
-final bookSearchProvider = FutureProvider.family<List<BookResource>, String>((ref, query) async {
-  if (query.trim().isEmpty) return [];
+// Advanced filter providers
+final selectedYearRangeProvider = StateProvider<RangeValues?>((ref) => null); // e.g. RangeValues(2015, 2023)
+final selectedMinCitationsProvider = StateProvider<int?>((ref) => null); // e.g. 50+
+final openAccessOnlyProvider = StateProvider<bool>((ref) => false);
+final selectedFieldOfStudyProvider = StateProvider<String?>((ref) => null); // e.g. "Computer Science"
 
-  try {
-    final response = await OpenLibraryService.searchBooks(query: query.trim());
-    if (response == null) return [];
-
-    return response.docs.map((book) => BookResource.fromOpenLibrary({
-      'key': book.key,
-      'title': book.title,
-      'author_name': book.authors,
-      'cover_i': book.coverUrl?.contains('/id/') == true
-          ? int.tryParse(book.coverUrl!.split('/id/')[1].split('-')[0])
-          : null,
-      'first_publish_year': book.firstPublishYear,
-      'subject': book.subjects,
-      'ratings_average': book.ratingsAverage,
-      'isbn': book.isbn,
-      'publisher': book.publisher != null ? [book.publisher] : null,
-      'number_of_pages_median': book.pageCount,
-      'description': book.description,
-    })).toList();
-  } catch (e) {
-    print('Book search provider error: $e');
-    return [];
-  }
-});
-
-// Research paper search provider
-final paperSearchProvider = FutureProvider.family<List<ResearchPaperResource>, String>((ref, query) async {
-  if (query.trim().isEmpty) return [];
-
-  try {
-    return await SemanticScholarService.searchPapers(query: query.trim());
-  } catch (e) {
-    print('Paper search provider error: $e');
-    return [];
-  }
-});
-
-// Combined search provider
-final combinedSearchProvider = FutureProvider.family<List<Resource>, String>((ref, query) async {
-  final selectedType = ref.watch(selectedResourceTypeProvider);
-  final trimmedQuery = query.trim();
-
-  print('🔍 [combinedSearchProvider] query="$trimmedQuery"');
-  print('🎯 Selected type: $selectedType');
-
-  try {
-    // If no search query, return trending
-    if (trimmedQuery.isEmpty) {
-      print('📈 No query entered — loading trending resources...');
-      if (selectedType == ResourceType.book) {
-        final books = await ref.watch(trendingBooksProvider.future);
-        print('📘 Trending books loaded: ${books.length}');
-        return books.cast<Resource>();
-      } else if (selectedType == ResourceType.researchPaper) {
-        final papers = await ref.watch(trendingPapersProvider.future);
-        print('📄 Trending papers loaded: ${papers.length}');
-        return papers.cast<Resource>();
-      } else {
-        final books = await ref.watch(trendingBooksProvider.future);
-        final papers = await ref.watch(trendingPapersProvider.future);
-        print('📘+📄 Trending books: ${books.length}, papers: ${papers.length}');
-        return [...books, ...papers];
-      }
-    }
-
-    // Search case
-    if (selectedType == ResourceType.book) {
-      print('🔎 Searching books...');
-      final books = await ref.watch(bookSearchProvider(trimmedQuery).future);
-      print('📘 Books found: ${books.length}');
-      return books.cast<Resource>();
-    } else if (selectedType == ResourceType.researchPaper) {
-      print('🔎 Searching research papers...');
-      final papers = await ref.watch(paperSearchProvider(trimmedQuery).future);
-      print('📄 Papers found: ${papers.length}');
-      return papers.cast<Resource>();
-    } else {
-      print('🔎 Searching both books and papers...');
-      final results = await Future.wait([
-        ref.watch(bookSearchProvider(trimmedQuery).future),
-        ref.watch(paperSearchProvider(trimmedQuery).future),
-      ]);
-
-      final books = results[0] as List<BookResource>;
-      final papers = results[1] as List<ResearchPaperResource>;
-      print('📘 Books: ${books.length}, 📄 Papers: ${papers.length}');
-
-      return [...books, ...papers];
-    }
-  } catch (e, stack) {
-    print('❌ Error in combinedSearchProvider: $e');
-    print(stack);
-    return [];
-  }
-});
-
-
-// Trending resources providers
-final trendingBooksProvider = FutureProvider<List<BookResource>>((ref) async {
-  try {
-    final books = await OpenLibraryService.getTrendingBooks();
-    return books.map((book) => BookResource.fromOpenLibrary({
-      'key': book.key,
-      'title': book.title,
-      'author_name': book.authors,
-      'cover_i': book.coverUrl?.contains('/id/') == true
-          ? int.tryParse(book.coverUrl!.split('/id/')[1].split('-')[0])
-          : null,
-      'first_publish_year': book.firstPublishYear,
-      'subject': book.subjects,
-      'ratings_average': book.ratingsAverage,
-      'isbn': book.isbn,
-      'publisher': book.publisher != null ? [book.publisher] : null,
-      'number_of_pages_median': book.pageCount,
-      'description': book.description,
-    })).toList();
-  } catch (e) {
-    print('Trending books provider error: $e');
-    return [];
-  }
-});
-
+// Trending research papers
 final trendingPapersProvider = FutureProvider<List<ResearchPaperResource>>((ref) async {
   try {
     return await SemanticScholarService.getTrendingPapers();
@@ -144,10 +23,31 @@ final trendingPapersProvider = FutureProvider<List<ResearchPaperResource>>((ref)
   }
 });
 
-// Bookmarks providers
-final bookmarksProvider = FutureProvider.family<List<Resource>, ResourceType?>((ref, type) async {
+// Paginated search provider
+final paperSearchPaginatedProvider = FutureProvider.family<List<ResearchPaperResource>, ({String query, int page, int limit})>((ref, args) async {
+  final query = args.query.trim();
+  if (query.isEmpty) return [];
+
+  final yearRange = ref.watch(selectedYearRangeProvider);
+  final minCitations = ref.watch(selectedMinCitationsProvider);
+  final openAccess = ref.watch(openAccessOnlyProvider);
+  final field = ref.watch(selectedFieldOfStudyProvider);
+
+  return await SemanticScholarService.searchPapers(
+    query: query,
+    offset: args.page * args.limit,
+    limit: args.limit,
+    yearRange: yearRange,
+    minCitations: minCitations,
+    openAccessOnly: openAccess,
+    fieldOfStudy: field,
+  );
+});
+
+// Bookmarks
+final bookmarksProvider = FutureProvider<List<Resource>>((ref) async {
   try {
-    return await BookmarkService.getBookmarkedResources(type: type);
+    return await BookmarkService.getBookmarkedResources(type: ResourceType.researchPaper);
   } catch (e) {
     print('Bookmarks provider error: $e');
     return [];
@@ -163,7 +63,6 @@ final bookmarkCountsProvider = FutureProvider<Map<ResourceType, int>>((ref) asyn
   }
 });
 
-// Bookmark state provider
 final bookmarkStateProvider = StateNotifierProvider<BookmarkStateNotifier, Map<String, bool>>((ref) {
   return BookmarkStateNotifier();
 });
@@ -173,24 +72,17 @@ class BookmarkStateNotifier extends StateNotifier<Map<String, bool>> {
 
   Future<void> toggleBookmark(Resource resource) async {
     final isCurrentlyBookmarked = state[resource.id] ?? false;
-
-    // Optimistically update UI
     state = {...state, resource.id: !isCurrentlyBookmarked};
 
     try {
-      bool success;
-      if (isCurrentlyBookmarked) {
-        success = await BookmarkService.removeBookmark(resource.id);
-      } else {
-        success = await BookmarkService.addBookmark(resource);
-      }
+      bool success = isCurrentlyBookmarked
+          ? await BookmarkService.removeBookmark(resource.id)
+          : await BookmarkService.addBookmark(resource);
 
       if (!success) {
-        // Revert on failure
-        state = {...state, resource.id: isCurrentlyBookmarked};
+        state = {...state, resource.id: isCurrentlyBookmarked}; // rollback
       }
     } catch (e) {
-      // Revert on error
       state = {...state, resource.id: isCurrentlyBookmarked};
       print('Bookmark toggle error: $e');
     }

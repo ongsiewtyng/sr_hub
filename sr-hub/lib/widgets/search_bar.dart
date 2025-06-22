@@ -1,4 +1,3 @@
-// lib/widgets/search_bar.dart
 import 'package:flutter/material.dart';
 
 class CustomSearchBar extends StatelessWidget {
@@ -6,7 +5,7 @@ class CustomSearchBar extends StatelessWidget {
   final TextEditingController? controller;
   final Function(String)? onChanged;
   final Function(String)? onSubmitted;
-  final VoidCallback? onFilterTap;
+  final VoidCallback? onFilterPressed; // ✅ Renamed from onFilterTap
   final bool showFilterButton;
   final EdgeInsetsGeometry margin;
   final bool autofocus;
@@ -17,7 +16,7 @@ class CustomSearchBar extends StatelessWidget {
     this.controller,
     this.onChanged,
     this.onSubmitted,
-    this.onFilterTap,
+    this.onFilterPressed, // ✅ updated
     this.showFilterButton = false,
     this.margin = const EdgeInsets.all(16),
     this.autofocus = false,
@@ -49,7 +48,7 @@ class CustomSearchBar extends StatelessWidget {
           suffixIcon: showFilterButton
               ? IconButton(
             icon: const Icon(Icons.filter_list),
-            onPressed: onFilterTap,
+            onPressed: onFilterPressed, // ✅ updated
           )
               : null,
           border: InputBorder.none,
