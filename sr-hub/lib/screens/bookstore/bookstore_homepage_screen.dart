@@ -379,29 +379,30 @@ class _BookstoreHomepageScreenState extends ConsumerState<BookstoreHomepageScree
                         ],
                         const Spacer(),
                         if (book.subjects.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              book.subjects.first,
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: Theme.of(context).primaryColor,
-                                fontWeight: FontWeight.w500,
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                book.subjects.first,
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: Theme.of(context).primaryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
                       ],
                     ),
-                    // Add this after the rating row
                     const SizedBox(height: 4),
                     FutureBuilder<Map<String, dynamic>?>(
                       future: PurchaseService.getPurchaseInfo(book.id),
@@ -420,9 +421,11 @@ class _BookstoreHomepageScreenState extends ConsumerState<BookstoreHomepageScree
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  format == 'epub' ? Icons.android :
-                                  format == 'pdf' ? Icons.picture_as_pdf :
-                                  Icons.menu_book,
+                                  format == 'epub'
+                                      ? Icons.android
+                                      : format == 'pdf'
+                                      ? Icons.picture_as_pdf
+                                      : Icons.menu_book,
                                   size: 10,
                                   color: Colors.green,
                                 ),
