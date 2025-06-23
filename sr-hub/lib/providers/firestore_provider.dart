@@ -46,3 +46,4 @@ final wishlistProvider = FutureProvider.family<List<String>, String>((ref, userI
 final savedResourcesProvider = FutureProvider.family<List<String>, String>((ref, userId) async {
   return await ref.read(firestoreServiceProvider).getUserSavedResources(userId);
 });
+

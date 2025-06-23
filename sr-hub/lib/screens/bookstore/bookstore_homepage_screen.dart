@@ -49,7 +49,7 @@ class _BookstoreHomepageScreenState extends ConsumerState<BookstoreHomepageScree
         : null;
 
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Open Library Bookstore'),
+      appBar: const CustomAppBar(title: ' Bookstore'),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(openLibraryTrendingProvider);
@@ -64,42 +64,36 @@ class _BookstoreHomepageScreenState extends ConsumerState<BookstoreHomepageScree
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Search Bar
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, color: Colors.grey),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: const InputDecoration(
-                          hintText: 'Search books, authors, subjects...',
-                          border: InputBorder.none,
-                        ),
-                        onSubmitted: (_) => _performSearch(),
-                        onChanged: (value) {
-                          if (value.isEmpty) {
-                            _clearSearch();
-                          }
-                        },
-                      ),
-                    ),
-                    if (searchQuery.isNotEmpty)
-                      IconButton(
-                        onPressed: _clearSearch,
-                        icon: const Icon(Icons.clear),
-                      ),
-                    IconButton(
-                      onPressed: _performSearch,
-                      icon: const Icon(Icons.search),
-                    ),
-                  ],
+              // Search Bar with visible border and proper focus styling
+              TextFormField(
+                controller: _searchController,
+                onFieldSubmitted: (_) => _performSearch(),
+                onChanged: (value) {
+                  if (value.isEmpty) _clearSearch();
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search books, authors, subjects...',
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.grey),
+                    onPressed: _clearSearch,
+                  )
+                      : IconButton(
+                    icon: const Icon(Icons.arrow_forward, color: Colors.grey),
+                    onPressed: _performSearch,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  filled: true,
+                  fillColor: Colors.white,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.8),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),

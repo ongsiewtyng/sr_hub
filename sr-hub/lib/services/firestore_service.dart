@@ -1,6 +1,7 @@
 // lib/services/firestore_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/book_model.dart';
+import '../models/open_library_models.dart';
 import '../models/resource_models.dart';
 import '../models/reservation_model.dart';
 import '../models/seat_model.dart';
@@ -246,4 +247,91 @@ class FirestoreService {
       return [];
     }
   }
+
+  Future<bool> isBookFavoritedInStats(String userId, String bookId) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('favorites')
+          .doc(bookId)
+          .get();
+
+      return doc.exists;
+    } catch (e) {
+      print('Error checking if book is favorited: $e');
+      return false;
+    }
+  }
+
+
+  Future<void> addToFavoritesInStats(String userId, OpenLibraryBook book) async {
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('favorites')
+          .doc(book.id); // or book.key if preferred
+
+      await docRef.set({
+        'id': book.id,
+        'title': book.title,
+        'coverUrl': book.coverUrl,
+        'authors': book.authors,
+        'addedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Optional: also update stats document for count tracking
+      await _firestore.collection('user_stats').doc(userId).update({
+        'favoriteBooks': FieldValue.arrayUnion([book.id]),
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error adding book to favorites: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> removeFromFavoritesInStats(String userId, String bookId) async {
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('favorites')
+          .doc(bookId);
+
+      await docRef.delete();
+
+      await _firestore.collection('user_stats').doc(userId).update({
+        'favoriteBooks': FieldValue.arrayRemove([bookId]),
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error removing book from favorites: $e');
+      rethrow;
+    }
+  }
+
+
+  Future<void> addToReadingList(String userId, OpenLibraryBook book) async {
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('reading_list')
+          .doc(book.id); // You can also use `book.key` if needed
+
+      await docRef.set({
+        'id': book.id,
+        'title': book.title,
+        'authors': book.authors,
+        'coverUrl': book.coverUrl,
+        'addedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error adding book to reading list: $e');
+      rethrow;
+    }
+  }
+
 }
