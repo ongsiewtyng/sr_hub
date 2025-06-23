@@ -108,14 +108,17 @@ class PurchaseService {
   static Future<bool> openLink(String url) async {
     try {
       final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return true;
-      }
-      return false;
+
+      final result = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      return result;
     } catch (e) {
-      print('❌ Link opening error: $e');
+      print('❌ Error launching URL: $e');
       return false;
     }
   }
+
 }
