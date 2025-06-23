@@ -98,9 +98,7 @@ class PurchaseService {
     return {
       'amazon': 'https://www.amazon.com/s?k=$encodedQuery&i=stripbooks',
       'googleBooks': previewLink ?? 'https://books.google.com/books?q=$encodedQuery',
-      'mph': 'https://www.mph.com.my/search?q=$encodedTitle',
-      'popular': 'https://www.popular.com.my/search?q=$encodedTitle',
-      'kinokuniya': 'https://singapore.kinokuniya.com/search?q=$encodedTitle',
+      'mph': 'https://mphonline.com/search?q=$encodedTitle',
     };
   }
 

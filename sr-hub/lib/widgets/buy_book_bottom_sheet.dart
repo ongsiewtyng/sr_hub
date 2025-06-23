@@ -160,22 +160,6 @@ class _BuyBookBottomSheetState extends ConsumerState<BuyBookBottomSheet> {
                       onTap: () => _openLink(buyLinks['mph']!),
                     ),
 
-                    _buildBuyOption(
-                      title: 'Popular Bookstore',
-                      subtitle: 'Popular bookstore chain',
-                      icon: Icons.store,
-                      color: Colors.green,
-                      onTap: () => _openLink(buyLinks['popular']!),
-                    ),
-
-                    _buildBuyOption(
-                      title: 'Kinokuniya',
-                      subtitle: 'Japanese bookstore chain',
-                      icon: Icons.store,
-                      color: Colors.purple,
-                      onTap: () => _openLink(buyLinks['kinokuniya']!),
-                    ),
-
                     const SizedBox(height: 20),
 
                     // Mark as Purchased Section
