@@ -32,11 +32,12 @@ class SemanticScholarService {
     int? minCitations,
     bool openAccessOnly = false,
     String? fieldOfStudy,
+    String? author,
+    List<String>? subjects,
   }) async {
     try {
       final searchFields = fields ?? defaultFields;
 
-      // Build filter expressions
       final List<String> filters = [];
 
       if (yearRange != null) {
@@ -49,6 +50,16 @@ class SemanticScholarService {
 
       if (fieldOfStudy != null && fieldOfStudy.isNotEmpty) {
         filters.add('fieldsOfStudy:$fieldOfStudy');
+      }
+
+      if (author != null && author.isNotEmpty) {
+        filters.add('authors.name:"$author"');
+      }
+
+      if (subjects != null && subjects.isNotEmpty) {
+        for (var subject in subjects) {
+          filters.add('fieldsOfStudy:$subject');
+        }
       }
 
       if (openAccessOnly) {
