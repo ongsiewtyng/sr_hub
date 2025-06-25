@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sr_hub/screens/library/room_reservation_screen.dart';
+import '../models/open_library_models.dart';
 import '../providers/auth_provider.dart';
 import '../providers/firestore_provider.dart';
+import '../providers/open_library_provider.dart';
+import '../providers/resource_providers.dart';
 import '../providers/room_reservation_provider.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_bottom_nav.dart';
@@ -21,6 +24,7 @@ import '../models/book_model.dart';
 import '../models/resource_models.dart';
 import '../models/reservation_model.dart';
 import '../models/library_models.dart';
+import 'bookstore/open_library_book_details_screeen.dart';
 import 'library/library_map_screen.dart';
 import 'bookstore/bookstore_homepage_screen.dart';
 import 'resources/resources_search_screen.dart';
@@ -115,12 +119,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildDashboard(String userId) {
     final currentUser = ref.watch(currentUserProvider);
-    final featuredBooks = ref.watch(featuredBooksProvider);
-    final resources = ref.watch(resourcesProvider);
-    // Use the firestore provider for general reservations
-    final generalReservations = ref.watch(userReservationsProvider(userId));
-    // Use the room reservation provider for room reservations
     final roomReservations = ref.watch(upcomingRoomReservationsProvider);
+
+    // New: Using API-backed providers
+    final trendingBooks = ref.watch(openLibraryTrendingProvider);
+    final trendingPapers = ref.watch(trendingPapersProvider);
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -158,31 +161,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          // Refresh all data
           ref.refresh(currentUserProvider);
-          ref.refresh(featuredBooksProvider);
-          ref.refresh(resourcesProvider);
-          ref.refresh(userReservationsProvider(userId));
           ref.refresh(upcomingRoomReservationsProvider);
+          ref.refresh(openLibraryTrendingProvider);
+          ref.refresh(trendingPapersProvider);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Welcome section
+              // Welcome Section
               currentUser.when(
-                data: (user) => user != null ? _buildWelcomeSection(user) : _buildDefaultWelcomeSection(),
+                data: (user) =>
+                user != null ? _buildWelcomeSection(user) : _buildDefaultWelcomeSection(),
                 loading: () => _buildLoadingWelcomeSection(),
                 error: (error, stack) => _buildErrorWelcomeSection(),
               ),
 
-              // Quick actions
+              // Quick Actions
               _buildQuickActions(),
 
-              // Room reservations section (from library system)
+              // Room Reservations
               roomReservations.when(
-                data: (roomReservationList) => _buildRoomReservationsSection(roomReservationList),
+                data: (roomReservationList) =>
+                    _buildRoomReservationsSection(roomReservationList),
                 loading: () => _buildLoadingSection('Loading room reservations...', 200),
                 error: (error, stack) => _buildErrorSection(
                   'Failed to load room reservations',
@@ -190,33 +193,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // // Other reservations (existing system)
-              // generalReservations.when(
-              //   data: (reservationList) => _buildReservationsSection(reservationList),
-              //   loading: () => _buildLoadingSection('Loading reservations...', 200),
-              //   error: (error, stack) => _buildErrorSection(
-              //     'Failed to load reservations',
-              //         () => ref.refresh(userReservationsProvider(userId)),
-              //   ),
-              // ),
-
-              // Featured books
-              featuredBooks.when(
+              // Featured Books (from OpenLibrary API)
+              trendingBooks.when(
                 data: (bookList) => _buildFeaturedBooksSection(bookList),
                 loading: () => _buildLoadingSection('Loading featured books...', 300),
                 error: (error, stack) => _buildErrorSection(
-                  'Failed to load books',
-                      () => ref.refresh(featuredBooksProvider),
+                  'Failed to load featured books',
+                      () => ref.refresh(openLibraryTrendingProvider),
                 ),
               ),
 
-              // Recent resources
-              resources.when(
-                data: (resourceList) => _buildResourcesSection(resourceList),
-                loading: () => _buildLoadingSection('Loading resources...', 200),
+              // Recent Research Papers
+              trendingPapers.when(
+                data: (papers) => _buildResourcesSection(papers),
+                loading: () => _buildLoadingSection('Loading research papers...', 200),
                 error: (error, stack) => _buildErrorSection(
-                  'Failed to load resources',
-                      () => ref.refresh(resourcesProvider),
+                  'Failed to load research papers',
+                      () => ref.refresh(trendingPapersProvider),
                 ),
               ),
 
@@ -227,6 +220,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+
 
   Widget _buildWelcomeSection(AppUser user) {
     return Container(
@@ -721,21 +715,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildFeaturedBooksSection(List<Book> books) {
+  Widget _buildFeaturedBooksSection(List<OpenLibraryBook>? books, {
+    bool isLoading = false,
+    String? errorMessage,
+    VoidCallback? onRetry,
+  }) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Always show title
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Featured Books',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               TextButton(
                 onPressed: () => setState(() => _currentIndex = 2),
@@ -744,62 +740,110 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          books.isEmpty
-              ? EmptyState(
-            message: 'No featured books available',
-            icon: Icons.book,
-            actionText: 'Browse Books',
-            onAction: () => setState(() => _currentIndex = 2),
-          )
-              : SizedBox(
-            height: 280,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: books.length,
-              itemBuilder: (context, index) {
-                final book = books[index];
-                return SizedBox(
-                  width: 160,
-                  child: BookCard(
-                    book: book,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Viewing ${book.title}')),
-                      );
-                    },
-                    onFavorite: () async {
-                      try {
-                        final firebaseUser = ref.read(authStateProvider).value;
-                        if (firebaseUser != null) {
-                          await ref.read(firestoreServiceProvider).addToWishlist(firebaseUser.uid, book.id);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${book.title} added to wishlist')),
-                            );
-                          }
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Failed to add to wishlist: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
+
+          // Loading
+          if (isLoading)
+            const SizedBox(
+              height: 120,
+              child: Center(child: LoadingIndicator(message: 'Loading featured books...')),
+            )
+
+          // Error
+          else if (errorMessage != null)
+            SizedBox(
+              height: 150,
+              child: ErrorDisplay(
+                message: errorMessage,
+                onRetry: onRetry,
+              ),
+            )
+
+          // Empty
+          else if (books == null || books.isEmpty)
+              EmptyState(
+                message: 'No featured books available',
+                icon: Icons.book,
+                actionText: 'Browse Books',
+                onAction: () => setState(() => _currentIndex = 2),
+              )
+
+            // Data
+            else
+              SizedBox(
+                height: 230,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: books.length,
+                  itemBuilder: (context, index) {
+                    final book = books[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: SizedBox(
+                        width: 140,
+                        child: _buildImprovedBookCard(book),
+                      ),
+                    );
+                  },
+                ),
+              ),
         ],
       ),
     );
   }
 
-  Widget _buildResourcesSection(List<Resource> resources) {
+  Widget _buildImprovedBookCard(OpenLibraryBook book) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OpenLibraryBookDetailsScreen(book: book),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Book cover
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: book.thumbnailUrl.isNotEmpty
+                ? Image.network(
+              book.thumbnailUrl,
+              height: 160,
+              width: 140,
+              fit: BoxFit.cover,
+            )
+                : Container(
+              height: 160,
+              width: 140,
+              color: Colors.grey.shade300,
+              child: const Icon(Icons.book),
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Title
+          Text(
+            book.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 2),
+          // Author
+          if (book.authors.isNotEmpty)
+            Text(
+              book.authors.first,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResourcesSection(List<ResearchPaperResource> papers) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -809,11 +853,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Recent Resources',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                'Recent Research Papers',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               TextButton(
                 onPressed: () => setState(() => _currentIndex = 3),
@@ -822,47 +863,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          resources.isEmpty
+          papers.isEmpty
               ? EmptyState(
-            message: 'No resources available',
-            icon: Icons.file_copy,
+            message: 'No research papers available',
+            icon: Icons.article,
             actionText: 'Browse Resources',
             onAction: () => setState(() => _currentIndex = 3),
           )
               : Column(
-            children: resources
-                .take(3)
-                .map((resource) => ResourceCard(
-              resource: resource,
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Viewing ${resource.title}')),
-                );
-              },
-              onSave: () async {
-                try {
-                  final firebaseUser = ref.read(authStateProvider).value;
-                  if (firebaseUser != null) {
-                    await ref.read(firestoreServiceProvider).saveResource(firebaseUser.uid, resource.id);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${resource.title} saved')),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  if (mounted) {
+            children: papers.take(5).map((paper) {
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 1,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: ListTile(
+                  leading: const Icon(Icons.article, color: Colors.blueAccent),
+                  title: Text(
+                    paper.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  subtitle: Text(
+                    paper.year.toString(),
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to save resource: $e'),
-                        backgroundColor: Colors.red,
-                      ),
+                      SnackBar(content: Text('Viewing: ${paper.title}')),
                     );
-                  }
-                }
-              },
-            ))
-                .toList(),
+                  },
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
