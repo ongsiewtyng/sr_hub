@@ -16,7 +16,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
   final _studentIdController = TextEditingController();
   final _departmentController = TextEditingController();
 
@@ -47,7 +46,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (user != null) {
         _nameController.text = user.name;
         _phoneController.text = user.phoneNumber ?? '';
-        _addressController.text = user.address ?? '';
         _studentIdController.text = user.studentId;
         _departmentController.text = user.department;
         _selectedDepartment = user.department;
@@ -65,7 +63,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final updates = {
         'name': _nameController.text.trim(),
         'phoneNumber': _phoneController.text.trim(),
-        'address': _addressController.text.trim(),
         'studentId': _studentIdController.text.trim(),
         'department': _selectedDepartment ?? _departmentController.text.trim(),
         'dateOfBirth': _selectedDateOfBirth,
@@ -194,7 +191,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   _sectionHeader('Personal Information'),
                   _formField(_nameController, 'Full Name', Icons.person, validator: _required),
                   _formField(_phoneController, 'Phone Number', Icons.phone, keyboardType: TextInputType.phone),
-                  _formField(_addressController, 'Address', Icons.location_on, maxLines: 2),
 
                   _datePickerField(
                     label: 'Date of Birth',
@@ -318,7 +314,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
     _studentIdController.dispose();
     _departmentController.dispose();
     super.dispose();
