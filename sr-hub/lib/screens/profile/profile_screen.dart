@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_display.dart';
@@ -17,13 +19,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(userProfileProvider.notifier).loadUserProfile();
+      final state = ref.read(userProfileProvider);
+      if (state.asData?.value == null) {
+        ref.read(userProfileProvider.notifier).loadUserProfile();
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(userProfileProvider);
+    final dateFormat = DateFormat('yyyy-MM-dd');
 
     return Scaffold(
       appBar: AppBar(
@@ -31,6 +37,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         centerTitle: true,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: _showLogoutDialog,
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             tooltip: 'Edit Profile',
@@ -56,20 +67,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _infoTile(Icons.person, 'Name', user.name),
               _infoTile(Icons.email, 'Email', user.email),
               _infoTile(Icons.phone, 'Phone', user.phoneNumber ?? 'Not provided'),
-              _infoTile(Icons.cake, 'DOB', user.dateOfBirth?.toLocal().toString().split(' ')[0] ?? 'Not provided'),
+              _infoTile(Icons.cake, 'DOB', user.dateOfBirth != null ? dateFormat.format(user.dateOfBirth!) : 'Not provided'),
 
               const SizedBox(height: 24),
               _sectionTitle(context, 'Academic Info'),
               _infoTile(Icons.badge, 'Student ID', user.studentId),
               _infoTile(Icons.school, 'Department', user.department),
               _infoTile(Icons.work_outline, 'Role', user.role.toUpperCase()),
-              _infoTile(Icons.calendar_month, 'Member Since', user.memberSince?.toLocal().toString().split(' ')[0] ?? '—'),
+              _infoTile(Icons.calendar_month, 'Member Since', user.memberSince != null ? dateFormat.format(user.memberSince!) : '—'),
 
               const SizedBox(height: 24),
-              _sectionTitle(context, 'Status'),
-              _infoTile(Icons.verified_user, 'Verified', user.isVerified ? 'Yes' : 'No'),
-              _infoTile(Icons.date_range, 'Created', user.createdAt?.toLocal().toString().split(' ')[0] ?? '—'),
-              _infoTile(Icons.update, 'Last Updated', user.updatedAt?.toLocal().toString().split(' ')[0] ?? '—'),
+              _sectionTitle(context, 'System Info'),
+              _infoTile(Icons.date_range, 'Created', user.createdAt != null ? dateFormat.format(user.createdAt!) : '—'),
+              _infoTile(Icons.update, 'Last Updated', user.updatedAt != null ? dateFormat.format(user.updatedAt!) : '—'),
             ],
           );
         },
@@ -111,15 +121,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           user.email,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
         ),
-        const SizedBox(height: 12),
-        Chip(
-          label: Text(user.isVerified ? 'Verified' : 'Pending'),
-          avatar: Icon(
-            user.isVerified ? Icons.check_circle : Icons.hourglass_empty,
-            color: user.isVerified ? Colors.green : Colors.orange,
-          ),
-          backgroundColor: user.isVerified ? Colors.green[50] : Colors.orange[50],
-        ),
       ],
     );
   }
@@ -153,6 +154,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: Colors.blueGrey),
+      ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await ref.read(authServiceProvider).signOut();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+            child: const Text('Logout'),
+          ),
+        ],
       ),
     );
   }

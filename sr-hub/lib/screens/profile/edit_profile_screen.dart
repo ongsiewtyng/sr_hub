@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/loading_indicator.dart';
@@ -18,6 +20,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _phoneController = TextEditingController();
   final _studentIdController = TextEditingController();
   final _departmentController = TextEditingController();
+  final _dobTextController = TextEditingController();
 
   bool _isLoading = false;
   DateTime? _selectedDateOfBirth;
@@ -33,6 +36,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     'Theater Arts', 'Communications', 'Journalism', 'Education', 'Nursing', 'Medicine',
     'Pharmacy', 'Physical Therapy', 'Other',
   ];
+
+  final _dobInputFormatter = TextInputFormatter.withFunction(
+        (oldValue, newValue) {
+      String digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+      String formatted = '';
+      for (int i = 0; i < digitsOnly.length && i < 8; i++) {
+        if (i == 2 || i == 4) formatted += '/';
+        formatted += digitsOnly[i];
+      }
+      return TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+    },
+  );
 
   @override
   void initState() {
@@ -50,6 +68,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         _departmentController.text = user.department;
         _selectedDepartment = user.department;
         _selectedDateOfBirth = user.dateOfBirth;
+        if (user.dateOfBirth != null) {
+          _dobTextController.text = DateFormat('dd/MM/yyyy').format(user.dateOfBirth!);
+        }
       }
     });
   }
@@ -87,37 +108,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  Future<void> _selectDateOfBirth() async {
+  void _pickDateFromCalendar() async {
+    final initialDate = _selectedDateOfBirth ?? DateTime.now().subtract(const Duration(days: 6570));
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDateOfBirth ?? DateTime.now().subtract(const Duration(days: 6570)),
+      initialDate: initialDate,
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
     );
-    if (picked != null && picked != _selectedDateOfBirth) {
-      setState(() => _selectedDateOfBirth = picked);
+    if (picked != null) {
+      setState(() {
+        _selectedDateOfBirth = picked;
+        _dobTextController.text = DateFormat('dd/MM/yyyy').format(picked);
+      });
     }
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await ref.read(authServiceProvider).signOut();
-              if (context.mounted) context.go('/login');
-            },
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -128,7 +132,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       appBar: AppBar(
         title: const Text('Edit Profile'),
         actions: [
-          IconButton(icon: const Icon(Icons.logout), onPressed: _showLogoutDialog),
           IconButton(
             tooltip: 'Save',
             icon: _isLoading
@@ -150,7 +153,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  // Avatar
                   Center(
                     child: Stack(
                       children: [
@@ -187,21 +189,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Personal Info
                   _sectionHeader('Personal Information'),
                   _formField(_nameController, 'Full Name', Icons.person, validator: _required),
-                  _formField(_phoneController, 'Phone Number', Icons.phone, keyboardType: TextInputType.phone),
+                  _formField(_phoneController, 'Phone Number', Icons.phone,
+                      keyboardType: TextInputType.phone, validator: _validatePhone),
 
-                  _datePickerField(
-                    label: 'Date of Birth',
-                    icon: Icons.calendar_today,
-                    date: _selectedDateOfBirth,
-                    onTap: _selectDateOfBirth,
+                  // DOB field with manual entry and calendar picker
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: TextFormField(
+                      controller: _dobTextController,
+                      decoration: InputDecoration(
+                        labelText: 'Date of Birth (dd/MM/yyyy)',
+                        prefixIcon: const Icon(Icons.calendar_today),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.date_range),
+                          onPressed: _pickDateFromCalendar,
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [_dobInputFormatter],
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) return 'DOB is required';
+                        try {
+                          _selectedDateOfBirth = DateFormat('dd/MM/yyyy').parseStrict(value);
+                        } catch (_) {
+                          return 'Enter a valid date as dd/MM/yyyy';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
 
                   const SizedBox(height: 24),
 
-                  // Academic Info
                   _sectionHeader('Academic Information'),
                   _formField(_studentIdController, 'Student ID', Icons.badge, validator: _required),
 
@@ -218,7 +239,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
                   const SizedBox(height: 32),
 
-                  // Action Buttons
                   SizedBox(
                     width: double.infinity,
                     height: 48,
@@ -268,8 +288,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _formField(TextEditingController controller, String label, IconData icon,
-      {String? Function(String?)? validator, int maxLines = 1, TextInputType? keyboardType}) {
+  Widget _formField(
+      TextEditingController controller,
+      String label,
+      IconData icon, {
+        String? Function(String?)? validator,
+        int maxLines = 1,
+        TextInputType? keyboardType,
+        List<TextInputFormatter>? inputFormatters,
+      }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -277,30 +304,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
         maxLines: maxLines,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         validator: validator,
-      ),
-    );
-  }
-
-  Widget _datePickerField({
-    required String label,
-    required IconData icon,
-    required DateTime? date,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: InkWell(
-        onTap: onTap,
-        child: InputDecorator(
-          decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
-          child: Text(
-            date != null ? date.toLocal().toString().split(' ')[0] : 'Select date of birth',
-            style: TextStyle(
-              color: date != null ? Colors.black87 : Theme.of(context).hintColor,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -310,12 +315,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return null;
   }
 
+  String? _validatePhone(String? value) {
+    if (value != null && value.isNotEmpty && !RegExp(r'^\+?\d{7,15}$').hasMatch(value)) {
+      return 'Enter a valid phone number';
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
     _studentIdController.dispose();
     _departmentController.dispose();
+    _dobTextController.dispose();
     super.dispose();
   }
 }
