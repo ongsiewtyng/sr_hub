@@ -463,7 +463,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 context,
                 icon: Icons.history,
                 label: 'My Reservations',
-                onTap: () => context.go('/my-reservations'),
+                onTap: () => context.push('/my-reservations'),
                 color: Colors.orange,
               ),
             ],
@@ -562,7 +562,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         side: isToday ? BorderSide(color: Theme.of(context).primaryColor, width: 2) : BorderSide.none,
       ),
       child: InkWell(
-        onTap: () => context.go('/my-reservations'),
+        onTap: () => context.push('/my-reservations'),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),

@@ -16,7 +16,15 @@ class MyReservationsScreen extends ConsumerWidget {
     final reservationsAsync = ref.watch(roomReservationsProvider);
 
     return Scaffold(
-      appBar: const CustomAppBar(title: 'My Reservations'),
+      appBar: CustomAppBar(
+        title: 'My Reservations',
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).maybePop();
+          },
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(roomReservationsProvider);

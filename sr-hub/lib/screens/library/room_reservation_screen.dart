@@ -37,6 +37,7 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
           Expanded(
             child: PageView(
               controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
               onPageChanged: (index) {
                 setState(() {
                   _currentStep = index;
