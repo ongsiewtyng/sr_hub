@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sr_hub/screens/library/room_reservation_screen.dart';
+import 'package:sr_hub/services/quote_service.dart';
 import '../models/open_library_models.dart';
 import '../providers/auth_provider.dart';
 import '../providers/firestore_provider.dart';
@@ -11,24 +11,20 @@ import '../providers/resource_providers.dart';
 import '../providers/room_reservation_provider.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_bottom_nav.dart';
-import '../widgets/book_card.dart';
-import '../widgets/resource_card.dart';
 import '../widgets/reservation_card.dart';
-import '../widgets/rating_widget.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/search_bar.dart';
 import '../models/user_model.dart';
-import '../models/book_model.dart';
 import '../models/resource_models.dart';
 import '../models/reservation_model.dart';
 import '../models/library_models.dart';
 import 'bookstore/open_library_book_details_screeen.dart';
-import 'library/library_map_screen.dart';
 import 'bookstore/bookstore_homepage_screen.dart';
 import 'resources/resources_search_screen.dart';
 import 'profile/profile_screen.dart';
+
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -38,6 +34,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  String? _randomQuote;
+  bool _quoteLoading = true;
+
   int _currentIndex = 0;
 
   @override
@@ -129,14 +128,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: CustomAppBar(
         title: 'Study Resource Hub',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications feature coming soon!')),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -289,16 +280,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          CustomSearchBar(
-            hintText: 'Search for books, resources, or seats',
-            showFilterButton: true,
-            margin: EdgeInsets.zero,
-            onSubmitted: (query) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Searching for: $query')),
-              );
-            },
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: _quoteLoading
+                ? const Text(
+              'Fetching daily inspiration...',
+              style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
+            )
+                : Text(
+              _randomQuote ?? '',
+              style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic),
+            ),
           ),
         ],
       ),
@@ -355,15 +352,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          CustomSearchBar(
-            hintText: 'Search for books, resources, or seats',
-            showFilterButton: true,
-            margin: EdgeInsets.zero,
-            onSubmitted: (query) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Searching for: $query')),
-              );
-            },
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: _quoteLoading
+                ? const Text(
+              'Fetching daily inspiration...',
+              style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
+            )
+                : Text(
+              _randomQuote ?? '',
+              style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic),
+            ),
           ),
         ],
       ),
@@ -644,26 +648,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row(
-          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //   children: [
-          //     const Text(
-          //       'Other Reservations',
-          //       style: TextStyle(
-          //         fontSize: 18,
-          //         fontWeight: FontWeight.bold,
-          //       ),
-          //     ),
-          //     TextButton(
-          //       onPressed: () {
-          //         ScaffoldMessenger.of(context).showSnackBar(
-          //           const SnackBar(content: Text('All reservations view coming soon!')),
-          //         );
-          //       },
-          //       child: const Text('See All'),
-          //     ),
-          //   ],
-          // ),
           const SizedBox(height: 8),
           upcomingReservations.isEmpty
               ? EmptyState(
@@ -924,4 +908,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRandomQuote();
+  }
+
+  void _loadRandomQuote() async {
+    try {
+      final quote = await QuoteService.fetchRandomQuote();
+      if (mounted) {
+        setState(() {
+          _randomQuote = quote;
+          _quoteLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _randomQuote = '“Inspiration failed to load.”';
+        _quoteLoading = false;
+      });
+    }
+  }
+
+
 }
