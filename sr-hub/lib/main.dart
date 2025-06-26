@@ -5,6 +5,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sr_hub/screens/auth/register_screen.dart';
 import 'package:sr_hub/screens/debug/open_library_test_screen.dart';
+import 'package:sr_hub/screens/ebook/ebook_picker_screen.dart';
+import 'package:sr_hub/screens/ebook/epub_reader_screen.dart';
+import 'package:sr_hub/screens/ebook/pdf_reader_screen.dart';
 import 'package:sr_hub/screens/library/my_reservations_screen.dart';
 import 'package:sr_hub/screens/library/room_reservation_screen.dart';
 import 'package:sr_hub/screens/profile/edit_profile_screen.dart';
@@ -58,6 +61,24 @@ final _router = GoRouter(
     GoRoute(
       path: '/bookstore',
       builder: (context, state) => const BookstoreHomepageScreen(),
+    ),
+    GoRoute(
+      path: '/ebook',
+      builder: (context, state) => const EbookPickerScreen(),
+    ),
+    GoRoute(
+      path: '/reader/pdf',
+      builder: (context, state) {
+        final filePath = state.extra as String;
+        return PdfReaderScreen(filePath: filePath);
+      },
+    ),
+    GoRoute(
+      path: '/reader/epub',
+      builder: (context, state) {
+        final filePath = state.extra as String;
+        return EpubReaderScreen(filePath: filePath);
+      },
     ),
     GoRoute(
       path: '/open-library-test',

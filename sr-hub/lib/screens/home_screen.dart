@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,7 +16,6 @@ import '../widgets/reservation_card.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/search_bar.dart';
 import '../models/user_model.dart';
 import '../models/resource_models.dart';
 import '../models/reservation_model.dart';
@@ -25,6 +25,13 @@ import 'bookstore/bookstore_homepage_screen.dart';
 import 'resources/resources_search_screen.dart';
 import 'profile/profile_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/ebook_local_loader.dart';
+import 'ebook/epub_reader_screen.dart';
+import 'ebook/pdf_reader_screen.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:epubx/epubx.dart' as epubx;
 
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -37,6 +44,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _randomQuote;
   bool _quoteLoading = true;
+  List<Ebook> _localEbooks = [];
 
   int _currentIndex = 0;
 
@@ -66,6 +74,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildEbookSection(List<Ebook> ebooks) {
+    if (ebooks.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Your eBooks',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Column(
+            children: ebooks.take(5).map((ebook) {
+              final path = ebook.file.path;
+              final isPdf = path.toLowerCase().endsWith('.pdf');
+              return ListTile(
+                leading: Icon(isPdf ? Icons.picture_as_pdf : Icons.book),
+                title: Text(ebook.title),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => isPdf
+                          ? PdfReaderScreen(filePath: path)
+                          : EpubReaderScreen(filePath: path),
+                    ),
+                  );
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildMainApp(String userId) {
     return Scaffold(
@@ -173,6 +221,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // Quick Actions
               _buildQuickActions(),
+
+              // Local eBooks Section
+              _buildEbookSection(_localEbooks),
 
               // Room Reservations
               roomReservations.when(
@@ -447,6 +498,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               _buildQuickAction(
                 context,
+                icon: Icons.upload_file,
+                label: 'Import eBook',
+                onTap: _selectEbookFile,
+                color: Colors.redAccent,
+              ),
+              _buildQuickAction(
+                context,
                 icon: Icons.event_seat,
                 label: 'Reserve Room',
                 onTap: () => setState(() => _currentIndex = 1),
@@ -478,6 +536,83 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _selectEbookFile() async {
+    bool permissionGranted = true;
+
+    if (Platform.isAndroid && Platform.version.compareTo('13') < 0) {
+      final storage = await Permission.storage.request();
+      permissionGranted = storage.isGranted;
+    }
+
+    if (!permissionGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Storage permission denied')),
+      );
+      return;
+    }
+
+    try {
+      final typeGroup = XTypeGroup(label: 'eBooks', extensions: ['pdf', 'epub']);
+      final file = await openFile(acceptedTypeGroups: [typeGroup]);
+
+      if (file != null && file.path.isNotEmpty) {
+        debugPrint('Selected file path: ${file.path}');
+        final selectedFile = File(file.path);
+
+        if (!await selectedFile.exists()) {
+          debugPrint('Selected file does not exist.');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Selected file not found')),
+          );
+          return;
+        }
+
+        // Extract title based on file type
+        String title;
+        try {
+          if (selectedFile.path.toLowerCase().endsWith('.pdf')) {
+            final bytes = await selectedFile.readAsBytes();
+            final pdf = PdfDocument(inputBytes: bytes);
+            title = pdf.documentInformation.title ?? selectedFile.path.split('/').last;
+            pdf.dispose();
+          } else {
+            final bytes = await selectedFile.readAsBytes();
+            final epub = await epubx.EpubReader.readBook(bytes);
+            title = epub.Title ?? selectedFile.path.split('/').last;
+          }
+        } catch (_) {
+          title = selectedFile.path.split('/').last;
+        }
+
+        final ebook = Ebook(title: title, file: selectedFile);
+
+        if (mounted) {
+          setState(() {
+            _localEbooks.insert(0, ebook); // Insert into model list
+          });
+
+          final isPdf = selectedFile.path.toLowerCase().endsWith('.pdf');
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => isPdf
+                  ? PdfReaderScreen(filePath: selectedFile.path)
+                  : EpubReaderScreen(filePath: selectedFile.path),
+            ),
+          );
+        }
+      }
+    } catch (e, stack) {
+      debugPrint('File selection crash: $e\n$stack');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error opening file: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildQuickAction(
@@ -916,6 +1051,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _loadRandomQuote();
+    _loadLocalEbooks();
+  }
+
+  void _loadLocalEbooks() async {
+    try {
+      final ebooks = await EbookLocalLoader.getLocalEbooks();
+      if (mounted) {
+        setState(() {
+          _localEbooks = ebooks;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load local ebooks: $e');
+    }
   }
 
   void _loadRandomQuote() async {
