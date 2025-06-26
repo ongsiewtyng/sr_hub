@@ -24,6 +24,7 @@ import 'bookstore/open_library_book_details_screeen.dart';
 import 'bookstore/bookstore_homepage_screen.dart';
 import 'resources/resources_search_screen.dart';
 import 'profile/profile_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -228,22 +229,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundImage: user.profileImageUrl != null
-                    ? NetworkImage(user.profileImageUrl!)
-                    : null,
-                backgroundColor: Colors.white.withOpacity(0.2),
-                child: user.profileImageUrl == null
-                    ? Text(
-                  user.name.isNotEmpty ? user.name.substring(0, 1).toUpperCase() : 'U',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Colors.white, // ✅ White background
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(2), // optional padding for spacing
+                child: ClipOval(
+                  child: SvgPicture.network(
+                    user.profileImageUrl!,
+                    fit: BoxFit.cover,
+                    placeholderBuilder: (context) => Container(
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.person, color: Colors.white),
+                    ),
                   ),
-                )
-                    : null,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(

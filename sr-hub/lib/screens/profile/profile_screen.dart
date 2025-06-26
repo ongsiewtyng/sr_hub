@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_display.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -15,16 +16,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final state = ref.read(userProfileProvider);
-      if (state.asData?.value == null) {
-        ref.read(userProfileProvider.notifier).loadUserProfile();
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,17 +90,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   );
 
   Widget _profileHeader(BuildContext context, dynamic user) {
+    final hasImage = user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty;
+
     return Column(
       children: [
-        CircleAvatar(
-          radius: 52,
-          backgroundColor: Colors.grey.shade300,
-          backgroundImage: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
-              ? NetworkImage(user.profileImageUrl!)
-              : null,
-          child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
-              ? Icon(Icons.person, size: 52, color: Colors.grey.shade600)
-              : null,
+        ClipOval(
+          child: Container(
+            color: Colors.grey.shade300,
+            width: 104,
+            height: 104,
+            child: hasImage
+                ? SvgPicture.network(
+              user.profileImageUrl!,
+              fit: BoxFit.cover,
+              placeholderBuilder: (context) => const Center(child: CircularProgressIndicator()),
+            )
+                : Icon(Icons.person, size: 52, color: Colors.grey.shade600),
+          ),
         ),
         const SizedBox(height: 16),
         Text(

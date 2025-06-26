@@ -26,15 +26,15 @@ final currentUserProvider = StreamProvider<AppUser?>((ref) async* {
 
 // User profile notifier for managing profile updates
 class UserProfileNotifier extends StateNotifier<AsyncValue<AppUser?>> {
-  UserProfileNotifier(this._authService) : super(const AsyncValue.loading());
-
   final AuthService _authService;
 
-  Future<void> loadUserProfile() async {
-    try {
-      state = const AsyncValue.loading();
-      final currentUser = _authService.currentUser;
+  UserProfileNotifier(this._authService) : super(const AsyncValue.loading()) {
+    _loadUser(); // ✅ Load automatically on init
+  }
 
+  Future<void> _loadUser() async {
+    try {
+      final currentUser = _authService.currentUser;
       if (currentUser != null) {
         final userData = await _authService.getUserData(currentUser.uid);
         state = AsyncValue.data(userData);
@@ -46,16 +46,17 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     }
   }
 
+  Future<void> loadUserProfile() async {
+    await _loadUser();
+  }
+
   Future<void> updateProfile(Map<String, dynamic> updates) async {
     try {
       final currentUser = _authService.currentUser;
       if (currentUser == null) throw Exception('No user logged in');
 
-      // Update in Firestore
       await _authService.updateUserProfile(currentUser.uid, updates);
-
-      // Reload profile data
-      await loadUserProfile();
+      await _loadUser();
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
     }

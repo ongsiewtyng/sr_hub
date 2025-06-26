@@ -149,6 +149,12 @@ class AuthService {
     }
   }
 
+  // Generate DiceBear profile image URL
+  String _generateProfileImageUrl(String seed) {
+    return 'https://api.dicebear.com/9.x/open-peeps/svg?seed=$seed';
+  }
+
+
   // Create user document in Firestore with enhanced error handling
   Future<void> _createUserDocument(
       User user,
@@ -159,7 +165,8 @@ class AuthService {
     try {
       print('Creating user document for: ${user.uid}');
 
-      // Create user data with null checks
+      final profileImageUrl = _generateProfileImageUrl(user.uid); // ✅ NEW
+
       final userData = {
         'id': user.uid,
         'name': name.trim(),
@@ -168,8 +175,7 @@ class AuthService {
         'department': department,
         'role': 'student',
         'memberSince': FieldValue.serverTimestamp(),
-        'isVerified': false,
-        'profileImageUrl': '',
+        'profileImageUrl': profileImageUrl, // ✅ NEW
         'phoneNumber': '',
         'address': '',
         'dateOfBirth': null,
@@ -177,7 +183,6 @@ class AuthService {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // Create user stats data
       final statsData = {
         'userId': user.uid,
         'totalReservations': 0,
@@ -190,9 +195,7 @@ class AuthService {
         'createdAt': FieldValue.serverTimestamp(),
       };
 
-      // Use batch write for better performance and atomicity
       final batch = _firestore.batch();
-
       final userDocRef = _firestore.collection('users').doc(user.uid);
       final statsDocRef = _firestore.collection('user_stats').doc(user.uid);
 

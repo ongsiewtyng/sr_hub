@@ -28,6 +28,7 @@ dependencies:
   # Image handling
   image_picker: ^1.0.4
   cached_network_image: ^3.3.0
+  flutter_svg: ^2.0.7
 
   # Utilities
   intl: ^0.18.1
