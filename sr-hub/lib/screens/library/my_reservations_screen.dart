@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../models/library_models.dart';
 import '../../providers/room_reservation_provider.dart';
@@ -15,93 +16,100 @@ class MyReservationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reservationsAsync = ref.watch(roomReservationsProvider);
 
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'My Reservations',
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).maybePop();
-          },
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(roomReservationsProvider);
-          ref.invalidate(upcomingRoomReservationsProvider);
-        },
-        child: reservationsAsync.when(
-          loading: () => const Center(child: LoadingIndicator()),
-          error: (error, stack) => ErrorDisplay(
-            message: 'Failed to load reservations: $error',
-            onRetry: () {
-              ref.invalidate(roomReservationsProvider);
-              ref.invalidate(upcomingRoomReservationsProvider);
+    return WillPopScope(
+      onWillPop: () async {
+        context.go('/'); //
+        return false; // Prevent default pop
+      },
+      child: Scaffold(
+        appBar: CustomAppBar(
+          title: 'My Reservations',
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              context.go('/'); // ⬅️ When AppBar back is tapped, go Home
             },
           ),
-          data: (reservations) {
-            if (reservations.isEmpty) {
-              return _buildEmptyState(context);
-            }
-
-            // Group reservations by status
-            final upcomingReservations = reservations
-                .where((r) => r.status == ReservationStatus.confirmed &&
-                r.date.isAfter(DateTime.now().subtract(const Duration(hours: 1))))
-                .toList();
-
-            final pastReservations = reservations
-                .where((r) => r.status == ReservationStatus.completed ||
-                (r.date.isBefore(DateTime.now().subtract(const Duration(hours: 1))) &&
-                    r.status == ReservationStatus.confirmed))
-                .toList();
-
-            final cancelledReservations = reservations
-                .where((r) => r.status == ReservationStatus.cancelled)
-                .toList();
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildStatsCards(upcomingReservations.length, pastReservations.length),
-                  const SizedBox(height: 24),
-
-                  if (upcomingReservations.isNotEmpty) ...[
-                    _buildSectionHeader('Upcoming Reservations', upcomingReservations.length),
-                    const SizedBox(height: 12),
-                    ...upcomingReservations.map((reservation) =>
-                        _buildReservationCard(context, ref, reservation, true)),
-                    const SizedBox(height: 24),
-                  ],
-
-                  if (pastReservations.isNotEmpty) ...[
-                    _buildSectionHeader('Past Reservations', pastReservations.length),
-                    const SizedBox(height: 12),
-                    ...pastReservations.map((reservation) =>
-                        _buildReservationCard(context, ref, reservation, false)),
-                    const SizedBox(height: 24),
-                  ],
-
-                  if (cancelledReservations.isNotEmpty) ...[
-                    _buildSectionHeader('Cancelled Reservations', cancelledReservations.length),
-                    const SizedBox(height: 12),
-                    ...cancelledReservations.map((reservation) =>
-                        _buildReservationCard(context, ref, reservation, false)),
-                  ],
-                ],
-              ),
-            );
-          },
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushNamed(context, '/reserve-room');
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('New Reservation'),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(roomReservationsProvider);
+            ref.invalidate(upcomingRoomReservationsProvider);
+          },
+          child: reservationsAsync.when(
+            loading: () => const Center(child: LoadingIndicator()),
+            error: (error, stack) => ErrorDisplay(
+              message: 'Failed to load reservations: $error',
+              onRetry: () {
+                ref.invalidate(roomReservationsProvider);
+                ref.invalidate(upcomingRoomReservationsProvider);
+              },
+            ),
+            data: (reservations) {
+              if (reservations.isEmpty) {
+                return _buildEmptyState(context);
+              }
+
+              final upcomingReservations = reservations
+                  .where((r) =>
+              r.status == ReservationStatus.confirmed &&
+                  r.date.isAfter(DateTime.now().subtract(const Duration(hours: 1))))
+                  .toList();
+
+              final pastReservations = reservations
+                  .where((r) =>
+              r.status == ReservationStatus.completed ||
+                  (r.date.isBefore(DateTime.now().subtract(const Duration(hours: 1))) &&
+                      r.status == ReservationStatus.confirmed))
+                  .toList();
+
+              final cancelledReservations = reservations
+                  .where((r) => r.status == ReservationStatus.cancelled)
+                  .toList();
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatsCards(upcomingReservations.length, pastReservations.length),
+                    const SizedBox(height: 24),
+
+                    if (upcomingReservations.isNotEmpty) ...[
+                      _buildSectionHeader('Upcoming Reservations', upcomingReservations.length),
+                      const SizedBox(height: 12),
+                      ...upcomingReservations.map((reservation) =>
+                          _buildReservationCard(context, ref, reservation, true)),
+                      const SizedBox(height: 24),
+                    ],
+
+                    if (pastReservations.isNotEmpty) ...[
+                      _buildSectionHeader('Past Reservations', pastReservations.length),
+                      const SizedBox(height: 12),
+                      ...pastReservations.map((reservation) =>
+                          _buildReservationCard(context, ref, reservation, false)),
+                      const SizedBox(height: 24),
+                    ],
+
+                    if (cancelledReservations.isNotEmpty) ...[
+                      _buildSectionHeader('Cancelled Reservations', cancelledReservations.length),
+                      const SizedBox(height: 12),
+                      ...cancelledReservations.map((reservation) =>
+                          _buildReservationCard(context, ref, reservation, false)),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.pushNamed(context, '/reserve-room');
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('New Reservation'),
+        ),
       ),
     );
   }

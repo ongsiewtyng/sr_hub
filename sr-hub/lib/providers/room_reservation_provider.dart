@@ -20,18 +20,16 @@ final availableRoomsProvider = FutureProvider<List<LibraryRoom>>((ref) async {
 });
 
 // Time slots for a specific room provider
-final timeSlotsForRoomProvider = FutureProvider.family<List<TimeSlot>, String>((ref, roomId) async {
+final timeSlotsForRoomProvider = StreamProvider.family.autoDispose<List<TimeSlot>, String>((ref, roomId) {
   final selectedDate = ref.watch(selectedDateProvider);
-  print('🔄 Fetching time slots for room: $roomId on ${selectedDate.toString()}');
+  print('🔄 Streaming time slots for room: $roomId on ${selectedDate.toString()}');
 
-  final timeSlots = await RoomReservationService.getAvailableTimeSlots(
+  return RoomReservationService.getAvailableTimeSlotsStream(
     roomId: roomId,
     date: selectedDate,
   );
-
-  print('✅ Time slots provider returned ${timeSlots.length} slots');
-  return timeSlots;
 });
+
 
 // Renamed to avoid conflict with firestore provider
 final roomReservationsProvider = FutureProvider<List<RoomReservation>>((ref) async {

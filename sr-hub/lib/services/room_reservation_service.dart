@@ -51,35 +51,39 @@ class RoomReservationService {
   }
 
   // Get available time slots for a room on a specific date
-  static Future<List<TimeSlot>> getAvailableTimeSlots({
+  static Stream<List<TimeSlot>> getAvailableTimeSlotsStream({
     required String roomId,
     required DateTime date,
-  }) async {
-    if (useMockData) {
-      print('🔍 Using mock time slots for room: $roomId on ${date.toString()}');
-      await Future.delayed(const Duration(milliseconds: 300));
-      final timeSlots = MockDataService.getMockTimeSlots(roomId: roomId, date: date);
-      print('✅ Generated ${timeSlots.length} mock time slots');
-      return timeSlots;
-    }
+  }) {
+    final baseDate = DateTime(date.year, date.month, date.day);
+    final startOfDay = baseDate;
+    final endOfDay = baseDate.add(const Duration(days: 1));
 
-    try {
-      print('🔍 Fetching time slots for room: $roomId on ${date.toString()}');
+    final reservationSnapshots = _firestore
+        .collection('room_reservations')
+        .where('roomId', isEqualTo: roomId)
+        .where('status', whereIn: ['pending', 'confirmed'])
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where('date', isLessThan: Timestamp.fromDate(endOfDay))
+        .snapshots();
 
-      // Generate standard time slots (9 AM to 9 PM, 1-hour slots)
+    return reservationSnapshots.map((snapshot) {
+      final reservations = snapshot.docs.map((doc) {
+        return RoomReservation.fromJson({...doc.data(), 'id': doc.id});
+      }).toList();
+
       final timeSlots = <TimeSlot>[];
-      final baseDate = DateTime(date.year, date.month, date.day);
-
       for (int hour = 9; hour < 21; hour++) {
         final startTime = baseDate.add(Duration(hours: hour));
         final endTime = startTime.add(const Duration(hours: 1));
 
-        // Check if this slot is already booked
-        final isBooked = await _isTimeSlotBooked(roomId, startTime, endTime);
+        bool isBooked = reservations.any((reservation) {
+          return startTime.isBefore(reservation.timeSlot.endTime) &&
+              endTime.isAfter(reservation.timeSlot.startTime);
+        });
 
-        // Make past time slots unavailable if it's today
-        final now = DateTime.now();
         bool isPast = false;
+        final now = DateTime.now();
         if (date.year == now.year &&
             date.month == now.month &&
             date.day == now.day &&
@@ -95,15 +99,8 @@ class RoomReservationService {
         ));
       }
 
-      print('✅ Generated ${timeSlots.length} time slots');
-      final availableCount = timeSlots.where((slot) => slot.isAvailable).length;
-      print('✅ Available slots: $availableCount');
-
       return timeSlots;
-    } catch (e) {
-      print('❌ Error fetching time slots: $e');
-      return [];
-    }
+    });
   }
 
   // Check if a time slot is already booked

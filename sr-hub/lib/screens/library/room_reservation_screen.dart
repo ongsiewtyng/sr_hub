@@ -927,14 +927,13 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
   }
 
   void _clearSelectionsAndNavigateToReservations() {
-    // Clear all selections
     ref.read(selectedRoomProvider.notifier).state = null;
     ref.read(selectedTimeSlotProvider.notifier).state = null;
     ref.read(selectedDateProvider.notifier).state = DateTime.now();
 
-    // Navigate to reservations page using GoRouter
     context.go('/my-reservations');
   }
+
 
   void _redirectToHome() {
     // Clear all selections
@@ -943,6 +942,6 @@ class _RoomReservationScreenState extends ConsumerState<RoomReservationScreen> {
     ref.read(selectedDateProvider.notifier).state = DateTime.now();
 
     // Navigate to home using GoRouter
-    context.go('/');
+    context.push('/');
   }
 }

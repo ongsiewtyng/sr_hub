@@ -672,7 +672,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () => context.go('/my-reservations'),
+                onPressed: () => context.push('/my-reservations'),
                 child: const Text('See All'),
               ),
             ],
