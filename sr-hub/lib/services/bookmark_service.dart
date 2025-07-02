@@ -221,4 +221,5 @@ class BookmarkService {
       return {};
     }
   }
+
 }

@@ -73,6 +73,7 @@ final bookmarkStateProvider = StateNotifierProvider<BookmarkStateNotifier, Map<S
   return BookmarkStateNotifier();
 });
 
+
 class BookmarkStateNotifier extends StateNotifier<Map<String, bool>> {
   BookmarkStateNotifier() : super({});
 

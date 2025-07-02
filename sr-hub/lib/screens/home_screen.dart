@@ -11,6 +11,7 @@ import '../providers/firestore_provider.dart';
 import '../providers/open_library_provider.dart';
 import '../providers/resource_providers.dart';
 import '../providers/room_reservation_provider.dart';
+import '../services/bookmark_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_bottom_nav.dart';
 import '../widgets/reservation_card.dart';
@@ -168,7 +169,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildDashboard(String userId) {
     final currentUser = ref.watch(currentUserProvider);
-    final userBookmarks = ref.watch(userBookmarksProvider);
+    final combinedFavorites = ref.watch(combinedFavoritesProvider);
     final roomReservations = ref.watch(upcomingRoomReservationsProvider);
 
     // New: Using API-backed providers
@@ -204,7 +205,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.refresh(currentUserProvider);
-          ref.refresh(userBookmarksProvider);
+          ref.refresh(combinedFavoritesProvider);
           ref.refresh(upcomingRoomReservationsProvider);
           ref.refresh(openLibraryTrendingProvider);
           ref.refresh(trendingPapersProvider);
@@ -228,12 +229,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // Local eBooks Section
               _buildEbookSection(_localEbooks),
 
-              userBookmarks.when(
-                data: (bookmarks) => _buildFavoriteBookmarksSection(bookmarks),
-                loading: () => _buildLoadingSection('Loading your bookmarks...', 100),
+              combinedFavorites.when(
+                data: (favorites) => _buildFavoriteBookmarksSection(favorites),
+                loading: () => _buildLoadingSection('Loading your favorites...', 100),
                 error: (error, stack) => _buildErrorSection(
-                  'Failed to load bookmarks',
-                      () => ref.refresh(userBookmarksProvider),
+                  'Failed to load favorites',
+                      () => ref.refresh(combinedFavoritesProvider),
                 ),
               ),
 
@@ -1036,13 +1037,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildFavoriteBookmarksSection(List<Resource> bookmarks) {
-    if (bookmarks.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Widget _buildFavoriteBookmarksSection(List<Resource> favorites) {
+    if (favorites.isEmpty) return const SizedBox.shrink();
+
+    final visible = favorites.take(5).toList();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1050,42 +1051,108 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             'Your Bookmarked Resources',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
-          Column(
-            children: bookmarks.take(5).map((resource) {
-              final title = resource.title;
-              final authors = (resource is BookResource || resource is ResearchPaperResource)
-                  ? (resource.authors.isNotEmpty ? resource.authors.join(', ') : 'Unknown Author')
-                  : 'Unknown';
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 190,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: visible.length,
+              itemBuilder: (context, index) {
+                final resource = visible[index];
+                final isBook = resource is BookResource;
+                final icon = isBook ? Icons.menu_book_rounded : Icons.article_rounded;
+                final badgeIcon = isBook ? Icons.favorite : Icons.bookmark;
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                elevation: 1,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                child: ListTile(
-                  leading: Icon(
-                    resource is BookResource ? Icons.menu_book : Icons.article,
-                    color: Colors.blueAccent,
+                final authors = (resource is BookResource || resource is ResearchPaperResource)
+                    ? (resource.authors.isNotEmpty ? resource.authors.join(', ') : 'Unknown Author')
+                    : '';
+
+                return Container(
+                  width: 150,
+                  margin: const EdgeInsets.only(right: 12),
+                  child: Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Open: ${resource.title}')),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    badgeIcon,
+                                    size: 18,
+                                    color: isBook ? Colors.red : Colors.amber,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () async {
+                                    final removed = await BookmarkService.removeBookmark(resource.id);
+                                    if (removed) {
+                                      ref.invalidate(userBookmarksProvider);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Removed from favorites!'),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Failed to remove!'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Icon(
+                              icon,
+                              size: 55, // 👈 perfect size — adjust if needed!
+                              color: isBook ? Colors.green : Colors.blueAccent,
+                            ),
+                            const Spacer(),
+                            Text(
+                              resource.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              authors,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  title: Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    authors,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Open: $title')),
-                    );
-                    // TODO: Navigate to resource detail screen if you have one
-                  },
-                ),
-              );
-            }).toList(),
+                );
+              },
+            ),
           ),
         ],
       ),
