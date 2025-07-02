@@ -6,6 +6,7 @@ import 'package:sr_hub/screens/library/room_reservation_screen.dart';
 import 'package:sr_hub/services/quote_service.dart';
 import '../models/open_library_models.dart';
 import '../providers/auth_provider.dart';
+import '../providers/bookmark_provider.dart';
 import '../providers/firestore_provider.dart';
 import '../providers/open_library_provider.dart';
 import '../providers/resource_providers.dart';
@@ -167,6 +168,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildDashboard(String userId) {
     final currentUser = ref.watch(currentUserProvider);
+    final userBookmarks = ref.watch(userBookmarksProvider);
     final roomReservations = ref.watch(upcomingRoomReservationsProvider);
 
     // New: Using API-backed providers
@@ -202,6 +204,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.refresh(currentUserProvider);
+          ref.refresh(userBookmarksProvider);
           ref.refresh(upcomingRoomReservationsProvider);
           ref.refresh(openLibraryTrendingProvider);
           ref.refresh(trendingPapersProvider);
@@ -224,6 +227,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // Local eBooks Section
               _buildEbookSection(_localEbooks),
+
+              userBookmarks.when(
+                data: (bookmarks) => _buildFavoriteBookmarksSection(bookmarks),
+                loading: () => _buildLoadingSection('Loading your bookmarks...', 100),
+                error: (error, stack) => _buildErrorSection(
+                  'Failed to load bookmarks',
+                      () => ref.refresh(userBookmarksProvider),
+                ),
+              ),
 
               // Room Reservations
               roomReservations.when(
@@ -1023,6 +1035,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildFavoriteBookmarksSection(List<Resource> bookmarks) {
+    if (bookmarks.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Your Bookmarked Resources',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Column(
+            children: bookmarks.take(5).map((resource) {
+              final title = resource.title;
+              final authors = (resource is BookResource || resource is ResearchPaperResource)
+                  ? (resource.authors.isNotEmpty ? resource.authors.join(', ') : 'Unknown Author')
+                  : 'Unknown';
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 1,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: ListTile(
+                  leading: Icon(
+                    resource is BookResource ? Icons.menu_book : Icons.article,
+                    color: Colors.blueAccent,
+                  ),
+                  title: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    authors,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Open: $title')),
+                    );
+                    // TODO: Navigate to resource detail screen if you have one
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildLoadingSection(String message, double height) {
     return Padding(
