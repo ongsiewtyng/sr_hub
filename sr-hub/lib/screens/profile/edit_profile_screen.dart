@@ -261,9 +261,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
                   TextButton.icon(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Change password feature coming soon!')),
-                      );
+                      context.push('/change-password');
                     },
                     icon: const Icon(Icons.lock_outline),
                     label: const Text('Change Password'),

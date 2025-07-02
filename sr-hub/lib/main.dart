@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sr_hub/screens/auth/forgot_password_confirmation_screen.dart';
+import 'package:sr_hub/screens/auth/forgot_password_screen.dart';
 import 'package:sr_hub/screens/auth/register_screen.dart';
 import 'package:sr_hub/screens/debug/open_library_test_screen.dart';
 import 'package:sr_hub/screens/ebook/ebook_picker_screen.dart';
@@ -10,6 +12,7 @@ import 'package:sr_hub/screens/ebook/epub_reader_screen.dart';
 import 'package:sr_hub/screens/ebook/pdf_reader_screen.dart';
 import 'package:sr_hub/screens/library/my_reservations_screen.dart';
 import 'package:sr_hub/screens/library/room_reservation_screen.dart';
+import 'package:sr_hub/screens/profile/change_password_screen.dart';
 import 'package:sr_hub/screens/profile/edit_profile_screen.dart';
 import 'package:sr_hub/screens/resources/resources_search_screen.dart';
 import 'screens/home_screen.dart';
@@ -49,6 +52,18 @@ final _router = GoRouter(
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) => const ForgotPasswordScreen(),
+    ),
+    GoRoute(
+      path: '/forgot-password-confirmation',
+      builder: (context, state) => const ForgotPasswordConfirmationScreen(),
+    ),
+    GoRoute(
+      path: '/change-password',
+      builder: (context, state) => const ChangePasswordScreen(),
     ),
     GoRoute(
       path: '/library',
