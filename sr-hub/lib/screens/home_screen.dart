@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sr_hub/screens/library/room_reservation_screen.dart';
+import 'package:sr_hub/screens/webview/webview_screen.dart';
 import 'package:sr_hub/services/quote_service.dart';
 import '../models/open_library_models.dart';
 import '../providers/auth_provider.dart';
@@ -1010,7 +1011,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 elevation: 1,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: ListTile(
                   leading: const Icon(Icons.article, color: Colors.blueAccent),
                   title: Text(
@@ -1020,12 +1023,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                   subtitle: Text(
-                    paper.year.toString(),
+                    paper.year?.toString() ?? '',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Viewing: ${paper.title}')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => WebViewScreen(
+                          url: paper.pdfUrl ?? paper.sourceUrl,
+                          title: paper.title,
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -1048,7 +1057,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Your Bookmarked Resources',
+            'Your Bookmarks',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
@@ -1060,6 +1069,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               itemBuilder: (context, index) {
                 final resource = visible[index];
                 final isBook = resource is BookResource;
+                final isPaper = resource is ResearchPaperResource;
+
                 final icon = isBook ? Icons.menu_book_rounded : Icons.article_rounded;
                 final badgeIcon = isBook ? Icons.favorite : Icons.bookmark;
 
@@ -1077,9 +1088,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     child: InkWell(
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Open: ${resource.title}')),
-                        );
+                        if (isPaper) {
+                          final paper = resource as ResearchPaperResource;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => WebViewScreen(
+                                url: paper.pdfUrl ?? paper.sourceUrl,
+                                title: paper.title,
+                              ),
+                            ),
+                          );
+                        } else if (isBook) {
+                          final book = resource as BookResource;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OpenLibraryBookDetailsScreen(
+                                book: OpenLibraryBook(
+                                  key: '/works/${book.id}', // 🔑 required for provider lookup
+                                  title: book.title,
+                                  authors: book.authors,
+                                  description: book.description,
+                                  coverUrl: book.imageUrl,
+                                  firstPublishYear: book.publishedDate?.year,
+                                  pageCount: book.pageCount,
+                                  subjects: book.subjects,
+                                  publisher: book.publisher,
+                                ),
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Cannot open: ${resource.title}')),
+                          );
+                        }
                       },
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -1120,7 +1164,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             const Spacer(),
                             Icon(
                               icon,
-                              size: 55, // 👈 perfect size — adjust if needed!
+                              size: 55,
                               color: isBook ? Colors.green : Colors.blueAccent,
                             ),
                             const Spacer(),
@@ -1158,7 +1202,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-
 
   Widget _buildLoadingSection(String message, double height) {
     return Padding(
