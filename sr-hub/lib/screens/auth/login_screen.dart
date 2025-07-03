@@ -1,9 +1,11 @@
 // lib/screens/auth/login_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../providers/auth_provider.dart';
-import '../../widgets/loading_indicator.dart';
+import '../../utils/error_handler.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -42,11 +44,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Login failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        ErrorHandler.show(
+          context,
+          e, // Just pass the raw error, let ErrorHandler handle it
+          type: ErrorType.error,
         );
       }
     } finally {
@@ -55,6 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +124,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        _obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
                       onPressed: () {
                         setState(() => _obscurePassword = !_obscurePassword);
@@ -152,7 +156,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor:
+                        AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
                         : const Text('Sign In'),

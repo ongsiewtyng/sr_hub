@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/error_handler.dart';
 import '../../widgets/loading_indicator.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -96,7 +97,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       print('Registration completed for user: ${user?.uid}');
 
       if (mounted && user != null) {
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Account created successfully! Welcome to Study Resource Hub!'),
@@ -105,38 +105,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         );
 
-        // Navigate to home
         context.go('/');
       }
     } catch (e) {
       print('Registration failed with error: $e');
 
       if (mounted) {
-        String errorMessage = 'Registration failed';
-
-        // Handle specific Firebase Auth errors
-        String errorString = e.toString().toLowerCase();
-
-        if (errorString.contains('email-already-in-use')) {
-          errorMessage = 'An account with this email already exists';
-        } else if (errorString.contains('weak-password')) {
-          errorMessage = 'Password is too weak. Please choose a stronger password';
-        } else if (errorString.contains('invalid-email')) {
-          errorMessage = 'Please enter a valid email address';
-        } else if (errorString.contains('network-request-failed')) {
-          errorMessage = 'Network error. Please check your internet connection';
-        } else if (errorString.contains('operation-not-allowed')) {
-          errorMessage = 'Email/password accounts are not enabled. Please contact support';
-        } else {
-          errorMessage = 'Registration failed. Please try again';
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
+        ErrorHandler.show(
+          context,
+          e, // just pass the raw error
+          type: ErrorType.error,
         );
       }
     } finally {
@@ -145,7 +123,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
