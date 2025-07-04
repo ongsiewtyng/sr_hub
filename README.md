@@ -1,4 +1,4 @@
-# Study and Resource Hub
+# Study Resource Hub
 
 A comprehensive mobile application built with Flutter for managing library resources, seat reservations, and digital content access.
 
