@@ -105,7 +105,7 @@ class MyReservationsScreen extends ConsumerWidget {
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () {
-            Navigator.pushNamed(context, '/reserve-room');
+            context.push('/library'); // Navigate to room reservation screen
           },
           icon: const Icon(Icons.add),
           label: const Text('New Reservation'),
@@ -146,7 +146,7 @@ class MyReservationsScreen extends ConsumerWidget {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () {
-                Navigator.pushNamed(context, '/reserve-room');
+                context.push('/library');
               },
               icon: const Icon(Icons.add),
               label: const Text('Make Your First Reservation'),
