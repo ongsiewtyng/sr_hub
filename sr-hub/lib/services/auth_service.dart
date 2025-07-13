@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import 'package:flutter/foundation.dart';
 
-/// Custom typed exception for safer error handling.
+
+/// ✅ Custom typed exception for robust error handling
 class AuthException implements Exception {
   final String message;
   AuthException(this.message);
@@ -14,13 +16,13 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Current signed-in user.
+  /// ✅ Current signed-in user
   User? get currentUser => _auth.currentUser;
 
-  /// Auth state changes stream.
+  /// ✅ Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  /// ✅ Sign in with email & password, with fallback for known type cast issues.
+  /// ✅ Sign in with fallback for pigeon cast bug
   Future<User?> signInWithEmailAndPassword(
       String email,
       String password,
@@ -34,7 +36,7 @@ class AuthService {
     } catch (e) {
       final err = e.toString().toLowerCase();
       if (err.contains('type') && err.contains('subtype')) {
-        // ✅ Known cast bug workaround
+        // ✅ Known pigeon fallback for sign-in
         await Future.delayed(const Duration(milliseconds: 1500));
         final fallbackUser = _auth.currentUser;
         if (fallbackUser != null && fallbackUser.email == email) {
@@ -45,7 +47,7 @@ class AuthService {
     }
   }
 
-  /// ✅ Register user with fallback for type casting issue.
+  /// ✅ Register user with fallback for pigeon cast bug
   Future<User?> registerWithEmailAndPassword(
       String email,
       String password,
@@ -91,7 +93,7 @@ class AuthService {
     return user;
   }
 
-  /// ✅ Robust reauthenticate helper.
+  /// ✅ Robust reauthenticate helper with logging
   Future<void> reauthenticate({
     required String email,
     required String currentPassword,
@@ -104,9 +106,13 @@ class AuthService {
       password: currentPassword,
     );
 
+    debugPrint('🔑 Reauthenticating with email: $email');
+
     try {
       await user.reauthenticateWithCredential(credential);
+      debugPrint('✅ Reauthentication succeeded!');
     } on FirebaseAuthException catch (e) {
+      debugPrint('❌ Reauth failed: ${e.code}');
       if (e.code == 'wrong-password') {
         throw AuthException('Incorrect current password.');
       } else {
@@ -115,7 +121,7 @@ class AuthService {
     }
   }
 
-  /// ✅ Change password with robust flow.
+  /// ✅ Change password: NO pigeon fallback, trust Firebase only!
   Future<void> changePassword({
     required String email,
     required String currentPassword,
@@ -126,8 +132,11 @@ class AuthService {
 
     try {
       await reauthenticate(email: email, currentPassword: currentPassword);
+      debugPrint('✅ Ready to update password');
       await user.updatePassword(newPassword);
+      debugPrint('✅ Password updated successfully');
     } on FirebaseAuthException catch (e) {
+      debugPrint('❌ Update password failed: ${e.code}');
       if (e.code == 'weak-password') {
         throw AuthException('The new password is too weak.');
       } else if (e.code == 'requires-recent-login') {
@@ -140,7 +149,7 @@ class AuthService {
     }
   }
 
-  /// ✅ Get user Firestore doc.
+  /// ✅ Get user Firestore doc
   Future<AppUser?> getUserData(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -153,13 +162,13 @@ class AuthService {
     }
   }
 
-  /// ✅ Update user Firestore doc.
+  /// ✅ Update user Firestore doc
   Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     data['updatedAt'] = FieldValue.serverTimestamp();
     await _firestore.collection('users').doc(uid).update(data);
   }
 
-  /// ✅ Create user doc.
+  /// ✅ Create user doc
   Future<void> _createUserDocument(
       User user,
       String name,
@@ -201,22 +210,21 @@ class AuthService {
     await batch.commit();
   }
 
-  /// ✅ Generates avatar.
   String _generateProfileImageUrl(String seed) {
     return 'https://api.dicebear.com/9.x/open-peeps/svg?seed=$seed';
   }
 
-  /// ✅ Sign out.
+  /// ✅ Sign out
   Future<void> signOut() async {
     await _auth.signOut();
   }
 
-  /// ✅ Send password reset email.
+  /// ✅ Send password reset email
   Future<void> resetPassword(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
-  /// ✅ Delete account + Firestore docs.
+  /// ✅ Delete account + Firestore docs
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
     if (user == null) return;

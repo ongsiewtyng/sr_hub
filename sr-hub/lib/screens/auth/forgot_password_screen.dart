@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
-import 'forgot_password_confirmation_screen.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
@@ -31,6 +30,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       await ref.read(authServiceProvider).resetPassword(_emailController.text.trim());
 
       if (mounted) {
+        // Navigate to confirmation screen if you have one
+        // Or show a success SnackBar instead
         context.go('/forgot-password-confirmation');
       }
     } catch (e) {
@@ -49,12 +50,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Forgot Password'),
+        automaticallyImplyLeading: true, // ✅ Shows back arrow if not the root
       ),
       body: SafeArea(
         child: Padding(
@@ -104,6 +105,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       ),
                     )
                         : const Text('Send Reset Link'),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextButton(
+                  onPressed: () {
+                    context.go('/login'); // ✅ Adjust to your login route
+                  },
+                  child: const Text(
+                    'Back to Login',
+                    style: TextStyle(
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
               ],
